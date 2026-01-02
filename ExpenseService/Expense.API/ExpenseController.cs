@@ -16,11 +16,12 @@ public class ExpenseController : ControllerBase
 
     [HttpGet]
     public IActionResult GetAll(
+        [FromQuery(Name = "search-term")] string? searchTerm = "",
         [FromQuery(Name = "start-index")] int startIndex = 0,
         [FromQuery(Name = "page-size")] int pageSize = 10
     )
     {
-        var expenses = _getAllExpenseQuery.Execute(startIndex, pageSize).ToList();
+        var expenses = _getAllExpenseQuery.Execute( startIndex, pageSize, searchTerm).ToList();
 
         if (expenses.Count == 0)
             return NoContent();

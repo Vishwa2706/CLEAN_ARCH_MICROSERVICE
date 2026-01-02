@@ -13,13 +13,18 @@ namespace Expense.Application.Query
             _expenseService = expenseService;
         }
 
-        public IQueryable<ExpenseDto> Execute(int startIndex, int pageSize)
+        public IQueryable<ExpenseDto> Execute(int startIndex, int pageSize, string? searchTerm = "")
         {
-            return _expenseService
-                .GetAllExpenses()
-                .OrderBy(e => e.Id)
-                .Skip(startIndex * pageSize)
-                .Take(pageSize);
+            var query = _expenseService.GetAllExpenses();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(e => e.Note.Contains(searchTerm));
+            }
+
+            query = query.OrderBy(e => e.Id).Skip(startIndex * pageSize).Take(pageSize);
+
+            return query;
         }
     }
 }
