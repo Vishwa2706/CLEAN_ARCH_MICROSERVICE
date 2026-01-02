@@ -15,9 +15,16 @@ public class ExpenseController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetAll()
+    public IActionResult GetAll(
+        [FromQuery(Name = "start-index")] int startIndex = 0,
+        [FromQuery(Name = "page-size")] int pageSize = 10
+    )
     {
-        var expenses = _getAllExpenseQuery.Execute().ToList();
+        var expenses = _getAllExpenseQuery.Execute(startIndex, pageSize).ToList();
+
+        if (expenses.Count == 0)
+            return NoContent();
+
         return Ok(expenses);
     }
 }
