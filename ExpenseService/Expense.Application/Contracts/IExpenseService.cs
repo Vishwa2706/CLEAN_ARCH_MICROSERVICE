@@ -8,5 +8,7 @@ namespace Expense.Application.Contracts
         IQueryable<ExpenseDto> GetAllExpenses();
 
         Task AddExpenseAsync(ExpenseDto expense);
+
+        Task UpdateExpenseAsync(int id, ExpenseDto expense);
     }
 }

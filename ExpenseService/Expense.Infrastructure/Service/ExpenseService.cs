@@ -22,5 +22,20 @@ namespace Expense.Infrastructure.Service
             _context.Expenses.Add(expense);
             await _context.SaveChangesAsync();
         }
+
+        public async Task UpdateExpenseAsync(int id, ExpenseDto expense)
+        {
+            var existingExpense = await _context.Expenses.FindAsync(id);
+
+            if (existingExpense == null)
+                throw new ArgumentException("Expense not found");
+
+            existingExpense.Category = expense.Category;
+            existingExpense.Amount = expense.Amount;
+            existingExpense.Date = expense.Date;
+            existingExpense.Note = expense.Note;
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

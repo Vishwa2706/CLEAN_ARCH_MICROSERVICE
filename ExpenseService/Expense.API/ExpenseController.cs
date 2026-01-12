@@ -18,18 +18,21 @@ public class ExpenseController : ControllerBase
     private readonly ExpenseExporterFactory _exporterFactory;
 
     private readonly CreateExpenseCommand _createExpenseCommand;
+    private readonly UpdateExpenseCommand _updateExpenseCommand;
 
     public ExpenseController(
         GetAllExpenseQuery getAllExpenseQuery,
         ILoggerService logger,
         ExpenseExporterFactory exporterFactory,
-        CreateExpenseCommand createExpenseCommand
+        CreateExpenseCommand createExpenseCommand,
+        UpdateExpenseCommand updateExpenseCommand
     )
     {
         _getAllExpenseQuery = getAllExpenseQuery;
         _logger = logger;
         _exporterFactory = exporterFactory;
         _createExpenseCommand = createExpenseCommand;
+        _updateExpenseCommand = updateExpenseCommand;
     }
 
     [HttpGet]
@@ -94,6 +97,23 @@ public class ExpenseController : ControllerBase
         {
             var id = await _createExpenseCommand.Execute(request);
             return Ok(id);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(
+        [FromRoute] int id,
+        [FromBody] CreateExpenseRequest request
+    )
+    {
+        try
+        {
+            var updatedId = await _updateExpenseCommand.Execute(id, request);
+            return Ok(updatedId);
         }
         catch (ArgumentException ex)
         {
