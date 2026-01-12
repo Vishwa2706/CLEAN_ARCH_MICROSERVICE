@@ -1,5 +1,6 @@
 using Expense.Application.Contracts;
 using Expense.Application.Query;
+using Expense.Application.Commands;
 using Expense.Application.Factories;
 using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Exporters;
@@ -21,6 +22,8 @@ builder.Services.AddSingleton<ILoggerService>(LoggerService.Instance);
 // DI
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<GetAllExpenseQuery>();
+
+builder.Services.AddScoped<CreateExpenseCommand>();
 
 builder.Services.AddScoped<IExpenseExporter, CsvExpenseExporter>();
 builder.Services.AddScoped<IExpenseExporter, JsonExpenseExporter>();

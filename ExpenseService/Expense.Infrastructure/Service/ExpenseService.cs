@@ -16,5 +16,11 @@ namespace Expense.Infrastructure.Service
         }
 
         public IQueryable<ExpenseDto> GetAllExpenses() => _context.Expenses.AsNoTracking();
+
+        public async Task AddExpenseAsync(ExpenseDto expense)
+        {
+            _context.Expenses.Add(expense);
+            await _context.SaveChangesAsync();
+        }
     }
 }

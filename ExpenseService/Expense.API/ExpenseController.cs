@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Expense.Application.Commands;
 using Expense.Application.Contracts;
 using Expense.Application.Factories;
 using Expense.Application.Query;
+using Expense.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Expense.API.Controllers;
@@ -15,15 +17,19 @@ public class ExpenseController : ControllerBase
 
     private readonly ExpenseExporterFactory _exporterFactory;
 
+    private readonly CreateExpenseCommand _createExpenseCommand;
+
     public ExpenseController(
         GetAllExpenseQuery getAllExpenseQuery,
         ILoggerService logger,
-        ExpenseExporterFactory exporterFactory
+        ExpenseExporterFactory exporterFactory,
+        CreateExpenseCommand createExpenseCommand
     )
     {
         _getAllExpenseQuery = getAllExpenseQuery;
         _logger = logger;
         _exporterFactory = exporterFactory;
+        _createExpenseCommand = createExpenseCommand;
     }
 
     [HttpGet]
@@ -78,6 +84,20 @@ public class ExpenseController : ControllerBase
         {
             _logger.LogError("Error while exporting expenses", ex);
             return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateExpenseRequest request)
+    {
+        try
+        {
+            var id = await _createExpenseCommand.Execute(request);
+            return Ok(id);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
     }
 }

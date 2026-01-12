@@ -6,5 +6,7 @@ namespace Expense.Application.Contracts
     public interface IExpenseService
     {
         IQueryable<ExpenseDto> GetAllExpenses();
+
+        Task AddExpenseAsync(ExpenseDto expense);
     }
 }
