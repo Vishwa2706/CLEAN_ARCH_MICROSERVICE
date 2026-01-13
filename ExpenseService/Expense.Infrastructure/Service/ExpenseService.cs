@@ -37,5 +37,27 @@ namespace Expense.Infrastructure.Service
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task PatchExpenseAsync(int id, PatchExpenseRequest request)
+        {
+            var existingExpense = await _context.Expenses.FindAsync(id);
+
+            if (existingExpense == null)
+                throw new ArgumentException("Expense not found");
+
+            if (request.Category != null)
+                existingExpense.Category = request.Category;
+
+            if (request.Amount.HasValue)
+                existingExpense.Amount = request.Amount.Value;
+
+            if (request.Date.HasValue)
+                existingExpense.Date = request.Date.Value;
+
+            if (request.Note != null)
+                existingExpense.Note = request.Note;
+
+            await _context.SaveChangesAsync();
+        }
     }
 }
