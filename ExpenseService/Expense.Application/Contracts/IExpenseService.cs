@@ -12,5 +12,7 @@ namespace Expense.Application.Contracts
         Task UpdateExpenseAsync(int id, ExpenseDto expense);
 
         Task PatchExpenseAsync(int id, PatchExpenseRequest request);
+
+        Task DeleteExpenseAsync(int id);
     }
 }

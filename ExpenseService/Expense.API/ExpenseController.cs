@@ -20,6 +20,7 @@ public class ExpenseController : ControllerBase
     private readonly CreateExpenseCommand _createExpenseCommand;
     private readonly UpdateExpenseCommand _updateExpenseCommand;
     private readonly PatchExpenseCommand _patchExpenseCommand;
+    private readonly DeleteExpenseCommand _deleteExpenseCommand;
 
     public ExpenseController(
         GetAllExpenseQuery getAllExpenseQuery,
@@ -27,7 +28,8 @@ public class ExpenseController : ControllerBase
         ExpenseExporterFactory exporterFactory,
         CreateExpenseCommand createExpenseCommand,
         UpdateExpenseCommand updateExpenseCommand,
-        PatchExpenseCommand patchExpenseCommand
+        PatchExpenseCommand patchExpenseCommand,
+        DeleteExpenseCommand deleteExpenseCommand
     )
     {
         _getAllExpenseQuery = getAllExpenseQuery;
@@ -36,6 +38,7 @@ public class ExpenseController : ControllerBase
         _createExpenseCommand = createExpenseCommand;
         _updateExpenseCommand = updateExpenseCommand;
         _patchExpenseCommand = patchExpenseCommand;
+        _deleteExpenseCommand = deleteExpenseCommand;
     }
 
     [HttpGet]
@@ -134,6 +137,20 @@ public class ExpenseController : ControllerBase
         {
             var updatedId = await _patchExpenseCommand.Execute(id, request);
             return Ok(updatedId);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete([FromRoute] int id)
+    {
+        try
+        {
+            var deletedId = await _deleteExpenseCommand.Execute(id);
+            return Ok(deletedId);
         }
         catch (ArgumentException ex)
         {

@@ -59,5 +59,16 @@ namespace Expense.Infrastructure.Service
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task DeleteExpenseAsync(int id)
+        {
+            var expense = await _context.Expenses.FindAsync(id);
+            if (expense == null)
+                throw new ArgumentException("Expense not found");
+
+            _context.Expenses.Remove(expense);
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

@@ -26,6 +26,7 @@ builder.Services.AddScoped<GetAllExpenseQuery>();
 builder.Services.AddScoped<CreateExpenseCommand>();
 builder.Services.AddScoped<UpdateExpenseCommand>();
 builder.Services.AddScoped<PatchExpenseCommand>();
+builder.Services.AddScoped<DeleteExpenseCommand>();
 
 builder.Services.AddScoped<IExpenseExporter, CsvExpenseExporter>();
 builder.Services.AddScoped<IExpenseExporter, JsonExpenseExporter>();
