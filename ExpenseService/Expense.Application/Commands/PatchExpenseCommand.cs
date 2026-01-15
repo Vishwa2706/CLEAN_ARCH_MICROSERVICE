@@ -21,6 +21,9 @@ namespace Expense.Application.Commands
             if (string.IsNullOrWhiteSpace(request.Category))
                 throw new ArgumentException("Category is required");
 
+            if (request.UserId <= 0)
+                throw new ArgumentException("Invalid user id");
+
             if (request.Amount <= 0)
                 throw new ArgumentException("Amount must be greater than zero");
 

@@ -30,6 +30,7 @@ namespace Expense.Infrastructure.Service
             if (existingExpense == null)
                 throw new ArgumentException("Expense not found");
 
+            existingExpense.UserId = expense.UserId;
             existingExpense.Category = expense.Category;
             existingExpense.Amount = expense.Amount;
             existingExpense.Date = expense.Date;
@@ -44,6 +45,9 @@ namespace Expense.Infrastructure.Service
 
             if (existingExpense == null)
                 throw new ArgumentException("Expense not found");
+
+            if (request.UserId != null)
+                existingExpense.UserId = request.UserId;
 
             if (request.Category != null)
                 existingExpense.Category = request.Category;

@@ -21,8 +21,12 @@ namespace Expense.Application.Commands
             if (request.Amount <= 0)
                 throw new ArgumentException("Amount must be greater than zero");
 
+             if(request.UserId <= 0)
+              throw new ArgumentException("Invalid user id");
+
             var expense = new ExpenseDto
             {
+                UserId = request.UserId,
                 Category = request.Category,
                 Amount = request.Amount,
                 Date = request.Date ?? DateTime.UtcNow,
