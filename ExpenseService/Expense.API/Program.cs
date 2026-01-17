@@ -1,12 +1,12 @@
-using Expense.Application.Contracts;
-using Expense.Application.Query;
 using Expense.Application.Commands;
+using Expense.Application.Contracts;
 using Expense.Application.Factories;
-using Expense.Infrastructure.Repository;
+using Expense.Application.Query;
 using Expense.Infrastructure.Exporters;
+using Expense.Infrastructure.Persistence.Seed;
+using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Service;
 using Microsoft.EntityFrameworkCore;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +17,6 @@ builder.Services.AddDbContext<ExpenseRepository>(options =>
 
 // Register LoggerService as singleton via interface
 builder.Services.AddSingleton<ILoggerService>(LoggerService.Instance);
-
 
 // DI
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
@@ -32,12 +31,22 @@ builder.Services.AddScoped<IExpenseExporter, CsvExpenseExporter>();
 builder.Services.AddScoped<IExpenseExporter, JsonExpenseExporter>();
 builder.Services.AddScoped<ExpenseExporterFactory>();
 
+//Seed Data
+builder.Services.AddScoped<DatabaseSeeder>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+//Temporary DI
+//Program.cs → DI scope → Seeder → DbContext → Database
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
+}
 
 app.UseSwagger();
 app.UseSwaggerUI();

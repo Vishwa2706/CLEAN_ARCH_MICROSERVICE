@@ -12,11 +12,13 @@ namespace Expense.Infrastructure.Exporters
         public byte[] Export(IEnumerable<ExpenseDto> expenses)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Id,Category,Amount,Date,Note");
+            sb.AppendLine("Id,Category,Amount,Date,Note,UserId");
 
             foreach (var e in expenses)
             {
-                sb.AppendLine($"{e.Id},{e.Category},{e.Amount},{e.Date:yyyy-MM-dd},{e.Note}");
+                sb.AppendLine(
+                    $"{e.Id},{e.Category},{e.Amount},{e.Date:yyyy-MM-dd},{e.Note},{e.UserId}"
+                );
             }
 
             return Encoding.UTF8.GetBytes(sb.ToString());
