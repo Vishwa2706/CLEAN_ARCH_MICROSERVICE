@@ -7,7 +7,7 @@ dotnet new classlib -n Expense.Application
 dotnet new classlib -n Expense.Domain
 dotnet new classlib -n Expense.Infrastructure
 
-//Add refrences 
+//Add references 
 
 dotnet add Expense.API reference Expense.Application
 dotnet add Expense.API reference Expense.Infrastructure
@@ -51,6 +51,15 @@ app.Run();
 dotnet ef migrations add AddUserTable --project Expense.Infrastructure --startup-project Expense.API
 dotnet ef database update --project Expense.Infrastructure --startup-project Expense.API
 
+
+steps to write a simple API,(personal use)
+
+1.create dto/model/entities in domain if needed
+2.create interface and add your method there
+3.create service and implement this interface and query using LINQ
+4.go to application layer and based on CQRS pattern create a get.cs file and inject Interface there and call method inside that service
+5.map this inteface and infra sevrice in program.cs
+6.go to controller and inject query file from application and call the method
 
 
 
