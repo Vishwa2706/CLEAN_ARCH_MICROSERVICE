@@ -1,0 +1,56 @@
+How to create a microservice
+
+//use below commands to create folders
+
+dotnet new webapi -n Expense.API
+dotnet new classlib -n Expense.Application
+dotnet new classlib -n Expense.Domain
+dotnet new classlib -n Expense.Infrastructure
+
+//Add refrences 
+
+dotnet add Expense.API reference Expense.Application
+dotnet add Expense.API reference Expense.Infrastructure
+
+dotnet add Expense.Application reference Expense.Domain
+
+dotnet add Expense.Infrastructure reference Expense.Application
+
+
+//Add ef core package, if error thorws add with specific package
+
+dotnet add Expense.Infrastructure package Microsoft.EntityFrameworkCore
+dotnet add Expense.Infrastructure package Microsoft.EntityFrameworkCore.SqlServer
+
+//Add connection string in appsettings.json
+
+//TO run migrations at first to create a new table in DB, add context in Repository and create model/entities in domain(dto)
+
+//Add tbcontext injection in API layer in program.classlib
+
+using User.Infrastructure.Repository;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add DbContext
+builder.Services.AddDbContext<ExpenseRepository>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+
+var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI();
+app.MapControllers();
+
+app.Run();
+
+//run below commands to apply migrations
+
+dotnet ef migrations add AddUserTable --project Expense.Infrastructure --startup-project Expense.API
+dotnet ef database update --project Expense.Infrastructure --startup-project Expense.API
+
+
+
+
