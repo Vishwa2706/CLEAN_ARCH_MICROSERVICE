@@ -11,10 +11,15 @@ namespace User.API.Controllers;
 public class UserController : ControllerBase
 {
     private readonly GetAllUserQuery _getAllUserQuery;
+    private readonly GetUserExpensesQuery _getUserExpensesQuery;
 
-    public UserController(GetAllUserQuery getAllUserQuery)
+    public UserController(
+        GetAllUserQuery getAllUserQuery,
+        GetUserExpensesQuery getUserExpensesQuery
+    )
     {
         _getAllUserQuery = getAllUserQuery;
+        _getUserExpensesQuery = getUserExpensesQuery;
     }
 
     [HttpGet]
@@ -23,5 +28,16 @@ public class UserController : ControllerBase
         var users = _getAllUserQuery.Execute().ToList();
 
         return Ok(users);
+    }
+
+    [HttpGet("{userId}/expenses")]
+    public async Task<IActionResult> GetUserWithExpenses([FromRoute] int userId)
+    {
+        var result = await _getUserExpensesQuery.ExecuteAsync(userId);
+
+        if (result == null)
+            return NotFound("User not found");
+
+        return Ok(result);
     }
 }

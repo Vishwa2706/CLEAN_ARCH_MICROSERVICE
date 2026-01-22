@@ -16,5 +16,34 @@ namespace User.Infrastructure.Service
         }
 
         public IQueryable<UserDto> GetAllUsers() => _context.Users.AsNoTracking();
+
+        public async Task<UserExpensesResponse?> GetUserExpensesAsync(int userId)
+        {
+            var data = await (
+                from u in _context.Users
+                join e in _context.Expenses on u.Id equals e.UserId into expenseGroup
+                where u.Id == userId
+                select new UserExpensesResponse
+                {
+                    UserId = u.Id,
+                    UserName = u.Name,
+                    Expenses = expenseGroup
+                        .Select(x => new Expense
+                        {
+                            Id = x.Id,
+                            UserId = x.UserId,
+                            Category = x.Category,
+                            Amount = x.Amount,
+                            Date = x.Date,
+                            Note = x.Note,
+                        })
+                        .ToList(),
+                }
+            )
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            return data;
+        }
     }
 }
