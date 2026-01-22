@@ -61,5 +61,44 @@ steps to write a simple API,(personal use)
 5.map this inteface and infra sevrice in program.cs
 6.go to controller and inject query file from application and call the method
 
+// to add foreign key reference, a microservice should have both the models, if need to use same model from another
+microservice means, add that model in shared.Model something, right now i dont want want that , so that i have  created in a single microservice itself
+
+//navigation property , parent to child is ok for navigation , but reverse navigation is child to parent is not ok, instead we can use joins
+
+//normal
+namespace User.Domain.Models
+{
+    public class UserDto
+    {
+        public int Id { get; set; }
+
+        public string Name { get; set; } = null!;
+
+        public int Mobile { get; set; }
+
+        public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
+    }
+}
+
+//reverse 
+namespace Expense.Domain.Models
+{
+    public class Expense
+    {
+        public int Id { get; set; }
+
+        // Foreign key
+        public int UserId { get; set; }
+
+        public string Category { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public DateTime Date { get; set; }
+        public string? Note { get; set; }
+
+        // Navigation property
+        public User User { get; set; } = null!;
+    }
+}
 
 

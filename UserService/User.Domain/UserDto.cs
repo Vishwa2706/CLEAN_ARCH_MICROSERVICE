@@ -7,5 +7,8 @@ namespace User.Domain.Models
         public string Name { get; set; } = null!;
 
         public int Mobile { get; set; }
+
+        //navigation property
+        public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
     }
 }
