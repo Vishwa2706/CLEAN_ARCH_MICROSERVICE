@@ -101,4 +101,11 @@ namespace Expense.Domain.Models
     }
 }
 
+//Factory pattern -> it is like which object should created at runtime (by hiding unwanted details from consumer)
+
+//Strategy pattern -> it is like which logic should be used at runtime(object already created)
+
+//both are almost similar, simple point is , factory should use if/else , strategy we will assign context manually
+
+
 

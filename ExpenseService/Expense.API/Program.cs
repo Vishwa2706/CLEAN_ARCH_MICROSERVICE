@@ -1,6 +1,7 @@
 using Expense.Application.Commands;
 using Expense.Application.Contracts;
 using Expense.Application.Factories;
+using Expense.Application.Strategies;
 using Expense.Application.Query;
 using Expense.Infrastructure.Exporters;
 using Expense.Infrastructure.Persistence.Seed;
@@ -30,6 +31,10 @@ builder.Services.AddScoped<DeleteExpenseCommand>();
 builder.Services.AddScoped<IExpenseExporter, CsvExpenseExporter>();
 builder.Services.AddScoped<IExpenseExporter, JsonExpenseExporter>();
 builder.Services.AddScoped<ExpenseExporterFactory>();
+
+builder.Services.AddScoped<MonthlyExpenseSummaryStrategy>();
+builder.Services.AddScoped<CategoryExpenseSummaryStrategy>();
+
 
 //Seed Data
 builder.Services.AddScoped<DatabaseSeeder>();

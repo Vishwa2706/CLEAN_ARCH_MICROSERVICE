@@ -3,6 +3,8 @@ using Expense.Application.Commands;
 using Expense.Application.Contracts;
 using Expense.Application.Factories;
 using Expense.Application.Query;
+using Expense.Application.Services;
+using Expense.Application.Strategies;
 using Expense.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,6 +19,9 @@ public class ExpenseController : ControllerBase
 
     private readonly ExpenseExporterFactory _exporterFactory;
 
+    private readonly MonthlyExpenseSummaryStrategy _monthly;
+    private readonly CategoryExpenseSummaryStrategy _category;
+
     private readonly CreateExpenseCommand _createExpenseCommand;
     private readonly UpdateExpenseCommand _updateExpenseCommand;
     private readonly PatchExpenseCommand _patchExpenseCommand;
@@ -26,6 +31,8 @@ public class ExpenseController : ControllerBase
         GetAllExpenseQuery getAllExpenseQuery,
         ILoggerService logger,
         ExpenseExporterFactory exporterFactory,
+        MonthlyExpenseSummaryStrategy monthly,
+        CategoryExpenseSummaryStrategy category,
         CreateExpenseCommand createExpenseCommand,
         UpdateExpenseCommand updateExpenseCommand,
         PatchExpenseCommand patchExpenseCommand,
@@ -35,6 +42,8 @@ public class ExpenseController : ControllerBase
         _getAllExpenseQuery = getAllExpenseQuery;
         _logger = logger;
         _exporterFactory = exporterFactory;
+        _monthly = monthly;
+        _category = category;
         _createExpenseCommand = createExpenseCommand;
         _updateExpenseCommand = updateExpenseCommand;
         _patchExpenseCommand = patchExpenseCommand;
@@ -94,6 +103,29 @@ public class ExpenseController : ControllerBase
             _logger.LogError("Error while exporting expenses", ex);
             return StatusCode(500, "Internal server error");
         }
+    }
+
+    [HttpGet("summary/{type}")]
+    public async Task<IActionResult> Get(
+        [FromRoute] string type,
+        [FromQuery] string? month = null,
+        [FromQuery] string? category = null,
+        [FromQuery(Name = "search-term")] string? searchTerm = "",
+        [FromQuery(Name = "start-index")] int startIndex = 0,
+        [FromQuery(Name = "page-size")] int pageSize = 100
+    )
+    {
+        var expenses = _getAllExpenseQuery.Execute(startIndex, pageSize, searchTerm);
+
+        var context = type.ToLower() switch
+        {
+            "month" => new ExpenseSummaryContext(_monthly),
+            "category" => new ExpenseSummaryContext(_category),
+            _ => throw new ArgumentException("Invalid summary type"),
+        };
+
+        var result = context.Generate(expenses, month, category);
+        return Ok(result);
     }
 
     [HttpPost]
