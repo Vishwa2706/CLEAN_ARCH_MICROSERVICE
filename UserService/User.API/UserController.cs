@@ -12,14 +12,17 @@ public class UserController : ControllerBase
 {
     private readonly GetAllUserQuery _getAllUserQuery;
     private readonly GetUserExpensesQuery _getUserExpensesQuery;
+    private readonly GetFamilyAdminService _getFamilyAdminService;
 
     public UserController(
         GetAllUserQuery getAllUserQuery,
-        GetUserExpensesQuery getUserExpensesQuery
+        GetUserExpensesQuery getUserExpensesQuery,
+        GetFamilyAdminService getFamilyAdminService
     )
     {
         _getAllUserQuery = getAllUserQuery;
         _getUserExpensesQuery = getUserExpensesQuery;
+        _getFamilyAdminService = getFamilyAdminService;
     }
 
     [HttpGet]
@@ -37,6 +40,14 @@ public class UserController : ControllerBase
 
         if (result == null)
             return NotFound("User not found");
+
+        return Ok(result);
+    }
+
+    [HttpGet("{userId}/permissions")]
+    public async Task<IActionResult> GetUserPermissionAsync([FromRoute] int userId)
+    {
+        var result = await _getFamilyAdminService.Execute(userId);
 
         return Ok(result);
     }

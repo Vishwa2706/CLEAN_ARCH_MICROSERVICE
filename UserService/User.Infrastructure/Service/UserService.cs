@@ -45,5 +45,12 @@ namespace User.Infrastructure.Service
 
             return data;
         }
+
+        public async Task<UserDto?> GetUserPermissions(int userId)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u =>
+                u.Id == userId && u.Role == "Admin"
+            );
+        }
     }
 }

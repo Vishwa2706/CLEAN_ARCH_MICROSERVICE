@@ -8,5 +8,7 @@ namespace User.Application.Contracts
         IQueryable<UserDto> GetAllUsers();
 
         Task<UserExpensesResponse?> GetUserExpensesAsync(int userId);
+
+        Task<UserDto?> GetUserPermissions(int userId);
     }
 }

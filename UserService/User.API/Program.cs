@@ -15,6 +15,7 @@ builder.Services.AddDbContext<UserRepository>(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<GetAllUserQuery>();
 builder.Services.AddScoped<GetUserExpensesQuery>();
+builder.Services.AddScoped<GetFamilyAdminService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
