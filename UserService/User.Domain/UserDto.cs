@@ -8,6 +8,8 @@ namespace User.Domain.Models
 
         public int Mobile { get; set; }
 
+        public string Role { get; set; }
+
         //navigation property
         public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
     }
