@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Expense.Application\Expense.Application.csproj" />
     <ProjectReference Include="..\Expense.Domain\Expense.Domain.csproj" />
     <ProjectReference Include="..\Expense.Infrastructure\Expense.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared.Exceptions\Shared.Exceptions.csproj" />
   </ItemGroup>
 
 </Project>

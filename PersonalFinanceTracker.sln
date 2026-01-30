@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NewFolder1", "NewFolder1", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Expense.API", "ExpenseService\Expense.API\Expense.API.csproj", "{F67B5657-7B6B-4A89-9BBA-D33AFC25A699}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared.Exceptions", "Shared.Exceptions\Shared.Exceptions.csproj", "{D961F7DA-269A-453F-AB65-471DC3DCD282}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{F67B5657-7B6B-4A89-9BBA-D33AFC25A699}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F67B5657-7B6B-4A89-9BBA-D33AFC25A699}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F67B5657-7B6B-4A89-9BBA-D33AFC25A699}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D961F7DA-269A-453F-AB65-471DC3DCD282}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D961F7DA-269A-453F-AB65-471DC3DCD282}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D961F7DA-269A-453F-AB65-471DC3DCD282}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D961F7DA-269A-453F-AB65-471DC3DCD282}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F67B5657-7B6B-4A89-9BBA-D33AFC25A699} = {60585EC0-77AC-A907-F975-385A6DECCD5D}

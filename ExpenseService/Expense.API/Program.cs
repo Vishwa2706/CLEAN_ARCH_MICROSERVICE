@@ -7,6 +7,7 @@ using Expense.Infrastructure.Exporters;
 using Expense.Infrastructure.Persistence.Seed;
 using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Service;
+using Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +36,6 @@ builder.Services.AddScoped<ExpenseExporterFactory>();
 builder.Services.AddScoped<MonthlyExpenseSummaryStrategy>();
 builder.Services.AddScoped<CategoryExpenseSummaryStrategy>();
 
-
 //Seed Data
 builder.Services.AddScoped<DatabaseSeeder>();
 
@@ -52,6 +52,8 @@ using (var scope = app.Services.CreateScope())
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
 }
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();
