@@ -10,6 +10,8 @@ namespace User.Domain.Models
 
         public string Role { get; set; }
 
+        public string PasswordHash { get; set; }
+
         //navigation property
         public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
     }
