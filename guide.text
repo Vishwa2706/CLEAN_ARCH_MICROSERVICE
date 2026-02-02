@@ -115,3 +115,6 @@ namespace Expense.Domain.Models
 //[Serializable] – marks a class so it can be converted to bytes (store, send, cache).
 //RequestDelegate – represents the next middleware call in the ASP.NET Core pipeline.
 //ILogger – standard interface to write structured logs (info, warning, error).
+
+//created identity service as a separate microsevrice and added login and register POST APIs
+//JWT comfiguration should be added in IdentityService appsetttings.json

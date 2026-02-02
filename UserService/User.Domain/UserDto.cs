@@ -6,7 +6,7 @@ namespace User.Domain.Models
 
         public string Name { get; set; } = null!;
 
-        public int Mobile { get; set; }
+        public long Mobile { get; set; }
 
         public string Role { get; set; }
 

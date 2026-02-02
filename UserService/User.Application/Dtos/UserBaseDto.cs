@@ -6,6 +6,6 @@ namespace User.Application.Dtos
 
         public string Name { get; set; } = null!;
 
-        public int Mobile { get; set; }
+        public long Mobile { get; set; }
     }
 }
