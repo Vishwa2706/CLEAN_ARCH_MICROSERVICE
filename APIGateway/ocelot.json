@@ -10,7 +10,11 @@
         }
       ],
       "UpstreamPathTemplate": "/api/users/{everything}",
-      "UpstreamHttpMethod": ["Get", "Post", "Put", "Patch", "Delete"]
+      "UpstreamHttpMethod": ["Get", "Post", "Put", "Patch", "Delete"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
     },
     {
       "DownstreamPathTemplate": "/api/expenses/{everything}",
@@ -22,7 +26,23 @@
         }
       ],
       "UpstreamPathTemplate": "/api/expenses/{everything}",
-      "UpstreamHttpMethod": ["Get", "Post", "Put", "Patch", "Delete"]
+      "UpstreamHttpMethod": ["Get", "Post", "Put", "Patch", "Delete"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5228
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/{everything}",
+      "UpstreamHttpMethod": ["Post"]
     }
   ],
   "GlobalConfiguration": {

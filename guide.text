@@ -118,3 +118,15 @@ namespace Expense.Domain.Models
 
 //created identity service as a separate microsevrice and added login and register POST APIs
 //JWT comfiguration should be added in IdentityService appsetttings.json
+
+//Authentication and authorization should be handled in API gateway ,
+ --> like wheni try to hit microservice it should have 
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      }
+
+      if so it should check the bearer token in header, if it is invalid, it will throw 401 unauthorized
+
+//Authentication — verifies identity using credentials or tokens; failure typically returns 401 (Unauthenticated).
+//Authorization — verifies permissions or access level after identity is confirmed; failure typically returns 403 (Forbidden)
