@@ -1,14 +1,15 @@
 using Expense.Application.Commands;
 using Expense.Application.Contracts;
 using Expense.Application.Factories;
-using Expense.Application.Strategies;
 using Expense.Application.Query;
+using Expense.Application.Strategies;
 using Expense.Infrastructure.Exporters;
 using Expense.Infrastructure.Persistence.Seed;
 using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Service;
-using Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using Shared.Authorization.Extensions;
+using Shared.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,9 @@ builder.Services.AddScoped<CategoryExpenseSummaryStrategy>();
 //Seed Data
 builder.Services.AddScoped<DatabaseSeeder>();
 
+builder.Services.AddJwtAuth(builder.Configuration);
+builder.Services.AddPermissionAuth();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -54,6 +58,9 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseSwagger();
 app.UseSwaggerUI();

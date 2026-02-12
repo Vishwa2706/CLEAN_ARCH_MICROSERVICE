@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Expense.Domain\Expense.Domain.csproj" />
     <ProjectReference Include="..\Expense.Infrastructure\Expense.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared.Exceptions\Shared.Exceptions.csproj" />
+    <ProjectReference Include="..\..\Shared.Authorization\Shared.Authorization.csproj" />
   </ItemGroup>
 
 </Project>

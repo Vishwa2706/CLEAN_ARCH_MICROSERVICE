@@ -57,12 +57,19 @@ public class AuthService : IAuthService
 
     private string GenerateJwt(User user)
     {
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim("UserId", user.Id.ToString()),
-            new Claim("Role", user.Role),
+            new Claim(ClaimTypes.Role, user.Role),
             new Claim("Name", user.Name),
         };
+
+        var permissions = GetPermissionsByRole(user.Role);
+
+        foreach (var permission in permissions)
+        {
+            claims.Add(new Claim("permission", permission));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
 
@@ -77,5 +84,17 @@ public class AuthService : IAuthService
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private List<string> GetPermissionsByRole(string role)
+    {
+        return role switch
+        {
+            "Admin" => new List<string> { "Expense.Read", "Expense.Create", "Expense.Delete" },
+
+            "Member" => new List<string> { "Expense.Read"},
+
+            _ => new List<string>(),
+        };
     }
 }

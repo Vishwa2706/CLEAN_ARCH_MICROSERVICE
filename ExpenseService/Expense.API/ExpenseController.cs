@@ -7,6 +7,8 @@ using Expense.Application.Services;
 using Expense.Application.Strategies;
 using Expense.Domain.Models;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Authorization.Attributes;
+using Shared.Authorization.Constants;
 
 namespace Expense.API.Controllers;
 
@@ -176,6 +178,7 @@ public class ExpenseController : ControllerBase
         }
     }
 
+    [PermissionAuthorize(Permissions.ExpenseDelete)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete([FromRoute] int id)
     {
