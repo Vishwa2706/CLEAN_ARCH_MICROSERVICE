@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Shared.Reddis.Contract;
+using Shared.Reddis.Service;
 using User.Application.Contracts;
 using User.Application.Query;
+using User.Application.Services;
 using User.Infrastructure.Repository;
 using User.Infrastructure.Service;
 
@@ -16,6 +19,12 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<GetAllUserQuery>();
 builder.Services.AddScoped<GetUserExpensesQuery>();
 builder.Services.AddScoped<GetFamilyAdminService>();
+
+// Redis REST
+builder.Services.AddHttpClient<IRedisCacheService, UpstashRedisCacheService>();
+
+builder.Services.AddScoped<IRefTermRepository, RefTermRepository>();
+builder.Services.AddScoped<RefTermServices>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

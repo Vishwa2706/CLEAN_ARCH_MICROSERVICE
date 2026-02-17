@@ -130,3 +130,9 @@ namespace Expense.Domain.Models
 
 //Authentication — verifies identity using credentials or tokens; failure typically returns 401 (Unauthenticated).
 //Authorization — verifies permissions or access level after identity is confirmed; failure typically returns 403 (Forbidden)
+
+//Created a shared Redis library 
+            -> it has two one is interface (contract) and other is Service which will get data from redis DB (like a translator + courier between your app and Upstash Redis)
+
+//Also we created a method and table ref in infra, if cache is not there means, it will hit db and then it will save data in redis too
+//Used Upstash Online redis service viw REST way
