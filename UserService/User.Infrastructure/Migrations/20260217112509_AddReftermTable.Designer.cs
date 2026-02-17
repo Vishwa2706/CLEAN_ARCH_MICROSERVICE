@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using User.Infrastructure.Repository;
@@ -11,9 +12,11 @@ using User.Infrastructure.Repository;
 namespace User.Infrastructure.Migrations
 {
     [DbContext(typeof(UserRepository))]
-    partial class UserRepositoryModelSnapshot : ModelSnapshot
+    [Migration("20260217112509_AddReftermTable")]
+    partial class AddReftermTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

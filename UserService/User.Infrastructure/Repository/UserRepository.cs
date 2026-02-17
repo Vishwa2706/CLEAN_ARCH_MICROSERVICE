@@ -12,6 +12,8 @@ public class UserRepository : DbContext
 
     public DbSet<Expense> Expenses => Set<Expense>();
 
+    public DbSet<RefTerm> RefTerms { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
