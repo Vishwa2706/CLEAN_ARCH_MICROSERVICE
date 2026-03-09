@@ -3,6 +3,7 @@ using Expense.Application.Contracts;
 using Expense.Application.Factories;
 using Expense.Application.Query;
 using Expense.Application.Strategies;
+using Expense.Infrastructure.Clients;
 using Expense.Infrastructure.Exporters;
 using Expense.Infrastructure.Persistence.Seed;
 using Expense.Infrastructure.Repository;
@@ -36,6 +37,11 @@ builder.Services.AddScoped<ExpenseExporterFactory>();
 
 builder.Services.AddScoped<MonthlyExpenseSummaryStrategy>();
 builder.Services.AddScoped<CategoryExpenseSummaryStrategy>();
+
+builder.Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>
+{
+    client.BaseAddress = new Uri("http://localhost:5180");
+});
 
 //Seed Data
 builder.Services.AddScoped<DatabaseSeeder>();

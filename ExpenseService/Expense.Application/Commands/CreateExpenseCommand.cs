@@ -9,9 +9,12 @@ namespace Expense.Application.Commands
     {
         private readonly IExpenseService _expenseService;
 
-        public CreateExpenseCommand(IExpenseService expenseService)
+        private readonly IUserServiceClient _userClient;
+
+        public CreateExpenseCommand(IExpenseService expenseService, IUserServiceClient userClient)
         {
             _expenseService = expenseService;
+            _userClient = userClient;
         }
 
         public async Task<int> Execute(CreateExpenseRequest request)
@@ -35,6 +38,15 @@ namespace Expense.Application.Commands
                     "Invalid user id",
                     "user id must be greater than zero",
                     "INVALID_USER_ID"
+                );
+
+            var user = await _userClient.GetUser(request.UserId);
+
+            if (user == null)
+                throw new BadRequestException(
+                    "Invalid User",
+                    "User does not exist",
+                    "USER_NOT_FOUND"
                 );
 
             var expense = new ExpenseDto
