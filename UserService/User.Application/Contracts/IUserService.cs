@@ -10,5 +10,7 @@ namespace User.Application.Contracts
         Task<UserExpensesResponse?> GetUserExpensesAsync(int userId);
 
         Task<UserDto?> GetUserPermissions(int userId);
+
+        Task<UserDto?> GetUserByIdAsync(int userId);
     }
 }

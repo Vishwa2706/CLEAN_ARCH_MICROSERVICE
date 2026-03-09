@@ -19,6 +19,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<GetAllUserQuery>();
 builder.Services.AddScoped<GetUserExpensesQuery>();
 builder.Services.AddScoped<GetFamilyAdminService>();
+builder.Services.AddScoped<GetUserByUserId>();
 
 // Redis REST
 builder.Services.AddHttpClient<IRedisCacheService, UpstashRedisCacheService>();

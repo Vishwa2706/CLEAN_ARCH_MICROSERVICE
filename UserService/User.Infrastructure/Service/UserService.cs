@@ -52,5 +52,10 @@ namespace User.Infrastructure.Service
                 u.Id == userId && u.Role == "Admin"
             );
         }
+
+        public async Task<UserDto?> GetUserByIdAsync(int userId)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        }
     }
 }

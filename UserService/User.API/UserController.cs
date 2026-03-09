@@ -13,16 +13,19 @@ public class UserController : ControllerBase
     private readonly GetAllUserQuery _getAllUserQuery;
     private readonly GetUserExpensesQuery _getUserExpensesQuery;
     private readonly GetFamilyAdminService _getFamilyAdminService;
+    private readonly GetUserByUserId  _getUserByUserId;
 
     public UserController(
         GetAllUserQuery getAllUserQuery,
         GetUserExpensesQuery getUserExpensesQuery,
-        GetFamilyAdminService getFamilyAdminService
+        GetFamilyAdminService getFamilyAdminService,
+        GetUserByUserId  getUserByUserId
     )
     {
         _getAllUserQuery = getAllUserQuery;
         _getUserExpensesQuery = getUserExpensesQuery;
         _getFamilyAdminService = getFamilyAdminService;
+        _getUserByUserId = getUserByUserId;
     }
 
     [HttpGet]
@@ -31,6 +34,18 @@ public class UserController : ControllerBase
         var users = _getAllUserQuery.Execute().ToList();
 
         return Ok(users);
+    }
+
+    [HttpGet("{userId}")]
+
+    public async Task<IActionResult> GetUserById([FromRoute] int userId)
+    {
+        var result = await _getUserByUserId.Execute(userId);
+
+        if (result == null)
+            return NotFound("User not found");
+
+        return Ok(result);
     }
 
     [HttpGet("{userId}/expenses")]
