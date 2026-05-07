@@ -128,6 +128,10 @@ namespace Expense.Domain.Models
 
       if so it should check the bearer token in header, if it is invalid, it will throw 401 unauthorized
 
+//When a request comes in, the JwtBearer middleware extracts the token and passes it to JwtSecurityTokenHandler.
+//The handler decodes the token, verifies the signature using the signing key, and then applies validations like issuer, audience, and lifetime based on TokenValidationParameters.
+//If any validation fails, it throws an exception and returns 401
+
 //Authentication — verifies identity using credentials or tokens; failure typically returns 401 (Unauthenticated).
 //Authorization — verifies permissions or access level after identity is confirmed; failure typically returns 403 (Forbidden)
 
