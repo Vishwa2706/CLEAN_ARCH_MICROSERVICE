@@ -6,6 +6,7 @@ using Expense.Application.Query;
 using Expense.Application.Services;
 using Expense.Application.Strategies;
 using Expense.Domain.Models;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Authorization.Attributes;
 using Shared.Authorization.Constants;
@@ -16,81 +17,72 @@ namespace Expense.API.Controllers;
 [Route("api/expenses")]
 public class ExpenseController : ControllerBase
 {
-    private readonly GetAllExpenseQuery _getAllExpenseQuery;
     private readonly ILoggerService _logger;
+
+    private readonly IMediator _mediator;
 
     private readonly ExpenseExporterFactory _exporterFactory;
 
     private readonly MonthlyExpenseSummaryStrategy _monthly;
     private readonly CategoryExpenseSummaryStrategy _category;
 
-    private readonly CreateExpenseCommand _createExpenseCommand;
-    private readonly UpdateExpenseCommand _updateExpenseCommand;
     private readonly PatchExpenseCommand _patchExpenseCommand;
     private readonly DeleteExpenseCommand _deleteExpenseCommand;
 
     public ExpenseController(
-        GetAllExpenseQuery getAllExpenseQuery,
+        IMediator mediator,
         ILoggerService logger,
         ExpenseExporterFactory exporterFactory,
         MonthlyExpenseSummaryStrategy monthly,
         CategoryExpenseSummaryStrategy category,
-        CreateExpenseCommand createExpenseCommand,
-        UpdateExpenseCommand updateExpenseCommand,
         PatchExpenseCommand patchExpenseCommand,
         DeleteExpenseCommand deleteExpenseCommand
     )
     {
-        _getAllExpenseQuery = getAllExpenseQuery;
+        _mediator = mediator;
         _logger = logger;
         _exporterFactory = exporterFactory;
         _monthly = monthly;
         _category = category;
-        _createExpenseCommand = createExpenseCommand;
-        _updateExpenseCommand = updateExpenseCommand;
         _patchExpenseCommand = patchExpenseCommand;
         _deleteExpenseCommand = deleteExpenseCommand;
     }
 
     [HttpGet]
-    public IActionResult GetAll(
+    public async Task<IActionResult> GetAll(
         [FromQuery(Name = "search-term")] string? searchTerm = "",
         [FromQuery(Name = "start-index")] int startIndex = 0,
         [FromQuery(Name = "page-size")] int pageSize = 10
     )
     {
-        try
-        {
-            _logger.LogInfo("Fetching expenses started");
-
-            var expenses = _getAllExpenseQuery.Execute(startIndex, pageSize, searchTerm).ToList();
-
-            if (!expenses.Any())
+        var expenses = await _mediator.Send(
+            new GetAllExpenseQuery
             {
-                _logger.LogWarning("No expenses found");
-                return NoContent();
+                SearchTerm = searchTerm,
+                StartIndex = startIndex,
+                PageSize = pageSize,
             }
+        );
 
-            _logger.LogInfo($"Fetched {expenses.Count} expenses successfully");
-            return Ok(expenses);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("Error while fetching expenses", ex);
-            return StatusCode(500, "Internal server error");
-        }
+        if (!expenses.Any())
+            return NoContent();
+
+        return Ok(expenses);
     }
 
     [HttpGet("export/{type}")]
-    public IActionResult ExportExpenses([FromRoute] string type)
+    public async Task<IActionResult> ExportExpenses([FromRoute] string type)
     {
         try
         {
             _logger.LogInfo($"Exporting expenses as {type}");
 
-            var expenses = _getAllExpenseQuery.Execute(0, 1000).ToList();
+            var expenses = await _mediator.Send(
+                new GetAllExpenseQuery { StartIndex = 0, PageSize = 1000 }
+            );
 
             var exporter = _exporterFactory.Create(type);
+
             var fileBytes = exporter.Export(expenses);
 
             return File(fileBytes, exporter.ContentType, $"expenses.{exporter.FileExtension}");
@@ -117,31 +109,35 @@ public class ExpenseController : ControllerBase
         [FromQuery(Name = "page-size")] int pageSize = 100
     )
     {
-        var expenses = _getAllExpenseQuery.Execute(startIndex, pageSize, searchTerm);
+        var expenses = await _mediator.Send(
+            new GetAllExpenseQuery
+            {
+                SearchTerm = searchTerm,
+                StartIndex = startIndex,
+                PageSize = pageSize,
+            }
+        );
 
         var context = type.ToLower() switch
         {
             "month" => new ExpenseSummaryContext(_monthly),
+
             "category" => new ExpenseSummaryContext(_category),
+
             _ => throw new ArgumentException("Invalid summary type"),
         };
 
-        var result = context.Generate(expenses, month, category);
+        var result = context.Generate(expenses.AsQueryable(), month, category);
+
         return Ok(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateExpenseRequest request)
     {
-        try
-        {
-            var id = await _createExpenseCommand.Execute(request);
-            return Ok(id);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var id = await _mediator.Send(new CreateExpenseCommand(request));
+
+        return Ok(id);
     }
 
     [HttpPut("{id}")]
@@ -150,15 +146,9 @@ public class ExpenseController : ControllerBase
         [FromBody] CreateExpenseRequest request
     )
     {
-        try
-        {
-            var updatedId = await _updateExpenseCommand.Execute(id, request);
-            return Ok(updatedId);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var updatedId = await _mediator.Send(new UpdateExpenseCommand(id, request));
+
+        return Ok(updatedId);
     }
 
     [HttpPatch("{id}")]

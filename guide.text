@@ -136,3 +136,240 @@ namespace Expense.Domain.Models
 
 //Also we created a method and table ref in infra, if cache is not there means, it will hit db and then it will save data in redis too
 //Used Upstash Online redis service viw REST way
+
+//Mediator Pattern (MediatR)
+
+//Mediator pattern is used to reduce tight coupling between controller and business logic.
+//Instead of directly injecting Commands/Queries into controller,
+//controller will communicate only with IMediator.
+
+//Before mediator
+
+Controller
+   -> Query / Command
+        -> Service
+            -> Repository
+
+//After mediator
+
+Controller
+   -> IMediator
+        -> Handler
+             -> Service
+                  -> Repository
+
+//Main advantage:
+//controller becomes very thin and clean
+
+//Before
+
+private readonly GetAllExpenseQuery _getAllExpenseQuery;
+private readonly CreateExpenseCommand _createExpenseCommand;
+private readonly UpdateExpenseCommand _updateExpenseCommand;
+
+//After
+
+private readonly IMediator _mediator;
+
+//Mediator automatically finds correct handler and executes it.
+
+//Install packages
+
+//API Layer
+dotnet add package MediatR
+dotnet add package MediatR.Extensions.Microsoft.DependencyInjection
+
+//Application Layer
+dotnet add package MediatR
+
+//Register mediator in Program.cs
+
+using MediatR;
+using System.Reflection;
+
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(Assembly.Load("Expense.Application"));
+});
+
+//------------------------------------------------------------
+
+//IRequest<T>
+
+//IRequest<T> represents a request sent through mediator
+//T represents the response type
+
+//Syntax
+
+IRequest<T>
+
+//Example
+
+public class GetAllExpenseQuery : IRequest<List<ExpenseDto>>
+{
+    public string? SearchTerm { get; set; }
+}
+
+//Meaning:
+//GetAllExpenseQuery will return List<ExpenseDto>
+
+//Examples
+
+IRequest<int>
+//returns integer
+
+IRequest<UserDto>
+//returns UserDto
+
+IRequest<List<ExpenseDto>>
+//returns list of expenses
+
+//------------------------------------------------------------
+
+//IRequestHandler<TRequest, TResponse>
+
+//This handles/processes the request
+
+//Syntax
+
+IRequestHandler<RequestType, ReturnType>
+
+//Example
+
+public class GetAllExpenseQueryHandler
+    : IRequestHandler<GetAllExpenseQuery, List<ExpenseDto>>
+{
+}
+
+//Meaning:
+//This handler processes GetAllExpenseQuery
+//and returns List<ExpenseDto>
+
+//Mediator internally matches request with correct handler
+
+//Example
+
+GetAllExpenseQuery
+      ->
+GetAllExpenseQueryHandler
+
+//------------------------------------------------------------
+
+//Handle() method
+
+//Handle method contains actual business logic
+//Mediator automatically calls this method internally
+
+//Syntax
+
+public async Task<TResponse> Handle(
+    TRequest request,
+    CancellationToken cancellationToken
+)
+{
+}
+
+//Example
+
+public async Task<List<ExpenseDto>> Handle(
+    GetAllExpenseQuery request,
+    CancellationToken cancellationToken
+)
+{
+    var query = _expenseService.GetAllExpenses();
+
+    return query.ToList();
+}
+
+//Meaning:
+//When mediator receives GetAllExpenseQuery,
+//it automatically calls Handle() method of matching handler
+
+//------------------------------------------------------------
+
+//Mediator Workflow
+
+Controller
+    ->
+_mediator.Send(new GetAllExpenseQuery())
+    ->
+Mediator searches matching handler
+    ->
+GetAllExpenseQueryHandler
+    ->
+Handle() method executes
+    ->
+Service
+    ->
+Database
+
+//------------------------------------------------------------
+
+//Visual representation
+
+┌────────────────────┐
+│ ExpenseController  │
+└─────────┬──────────┘
+          │
+          │ Send(Query)
+          ▼
+┌────────────────────┐
+│     IMediator      │
+└─────────┬──────────┘
+          │
+          │ Finds matching handler
+          ▼
+┌─────────────────────────────┐
+│ GetAllExpenseQueryHandler   │
+└─────────┬───────────────────┘
+          │
+          │ Calls service
+          ▼
+┌────────────────────┐
+│   ExpenseService   │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────┐
+│     Database       │
+└────────────────────┘
+
+//------------------------------------------------------------
+
+//Controller usage
+
+var result = await _mediator.Send(
+    new GetAllExpenseQuery()
+);
+
+//builder.Services.AddMediatR(cfg =>
+//{
+//    cfg.RegisterServicesFromAssembly(Assembly.Load("Expense.Application"));
+//});
+
+//This code registers MediatR and tells it:
+
+//"Go to Expense.Application assembly/project
+//and automatically find all handlers"
+
+//Mediator internally:
+//1. Finds matching handler
+//2. Creates handler object using DI
+//3. Calls Handle()
+//4. Returns response
+
+//------------------------------------------------------------
+
+//Benefits
+//1. Loose coupling
+//2. Cleaner controller
+//3. Better scalability
+//4. Easier testing
+//5. Easy to add validation/logging globally using pipeline behaviors
+
+//------------------------------------------------------------
+
+//CQRS + Mediator
+
+//Command -> used for create/update/delete
+//Query -> used for fetch/read operations

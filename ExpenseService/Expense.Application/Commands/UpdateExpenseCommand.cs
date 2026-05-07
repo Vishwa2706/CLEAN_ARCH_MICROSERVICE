@@ -1,45 +1,59 @@
-using System.Linq;
 using Expense.Application.Contracts;
 using Expense.Domain.Models;
+using MediatR;
 
-namespace Expense.Application.Commands
+namespace Expense.Application.Commands;
+
+public class UpdateExpenseCommand : IRequest<int>
 {
-    public class UpdateExpenseCommand
+    public int Id { get; set; }
+    public CreateExpenseRequest Request { get; set; }
+
+    public UpdateExpenseCommand(int id, CreateExpenseRequest request)
     {
-        private readonly IExpenseService _expenseService;
+        Id = id;
+        Request = request;
+    }
+}
 
-        public UpdateExpenseCommand(IExpenseService expenseService)
+public class UpdateExpenseCommandHandler
+    : IRequestHandler<UpdateExpenseCommand, int>
+{
+    private readonly IExpenseService _expenseService;
+
+    public UpdateExpenseCommandHandler(IExpenseService expenseService)
+    {
+        _expenseService = expenseService;
+    }
+
+    public async Task<int> Handle(
+        UpdateExpenseCommand command,
+        CancellationToken cancellationToken
+    )
+    {
+        var request = command.Request;
+
+        if (command.Id <= 0)
+            throw new ArgumentException("Invalid expense id");
+
+        if (string.IsNullOrWhiteSpace(request.Category))
+            throw new ArgumentException("Category is required");
+
+        if (request.Amount <= 0)
+            throw new ArgumentException("Amount must be greater than zero");
+
+        var expense = new ExpenseDto
         {
-            _expenseService = expenseService;
-        }
+            Id = command.Id,
+            UserId = request.UserId,
+            Category = request.Category,
+            Amount = request.Amount,
+            Date = request.Date ?? DateTime.UtcNow,
+            Note = request.Note
+        };
 
-        public async Task<int> Execute(int id, CreateExpenseRequest request)
-        {
-            if (id <= 0)
-                throw new ArgumentException("Invalid expense id");
+        await _expenseService.UpdateExpenseAsync(command.Id, expense);
 
-            if (string.IsNullOrWhiteSpace(request.Category))
-                throw new ArgumentException("Category is required");
-
-            if (request.UserId <= 0)
-                throw new ArgumentException("Invalid user id");
-
-            if (request.Amount <= 0)
-                throw new ArgumentException("Amount must be greater than zero");
-
-            var expense = new ExpenseDto
-            {
-                Id = id,
-                UserId = request.UserId,
-                Category = request.Category,
-                Amount = request.Amount,
-                Date = request.Date ?? DateTime.UtcNow,
-                Note = request.Note,
-            };
-
-            await _expenseService.UpdateExpenseAsync(id, expense);
-
-            return id;
-        }
+        return command.Id;
     }
 }

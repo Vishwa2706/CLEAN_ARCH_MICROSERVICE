@@ -1,3 +1,4 @@
+using System.Reflection;
 using Expense.Application.Commands;
 using Expense.Application.Contracts;
 using Expense.Application.Factories;
@@ -8,6 +9,7 @@ using Expense.Infrastructure.Exporters;
 using Expense.Infrastructure.Persistence.Seed;
 using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Service;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Authorization.Extensions;
 using Shared.Exceptions;
@@ -24,10 +26,6 @@ builder.Services.AddSingleton<ILoggerService>(LoggerService.Instance);
 
 // DI
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
-builder.Services.AddScoped<GetAllExpenseQuery>();
-
-builder.Services.AddScoped<CreateExpenseCommand>();
-builder.Services.AddScoped<UpdateExpenseCommand>();
 builder.Services.AddScoped<PatchExpenseCommand>();
 builder.Services.AddScoped<DeleteExpenseCommand>();
 
@@ -52,6 +50,11 @@ builder.Services.AddPermissionAuth();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(Assembly.Load("Expense.Application"));
+});
 
 var app = builder.Build();
 
