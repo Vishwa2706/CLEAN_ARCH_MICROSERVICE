@@ -377,3 +377,238 @@ var result = await _mediator.Send(
 
 //Command -> used for create/update/delete
 //Query -> used for fetch/read operations
+
+//------------------------------------------------------------
+
+//API Gateway using YARP (Full Flow Guide)
+
+//Create API Gateway project
+
+dotnet new webapi -n APIGateway.YARP
+
+//------------------------------------------------------------
+
+//Install required packages
+
+dotnet add package Yarp.ReverseProxy
+dotnet add package System.IdentityModel.Tokens.Jwt
+
+//------------------------------------------------------------
+
+//Create folders
+
+Contracts
+Infrastructure (Authentication, Services)
+Extensions
+
+//------------------------------------------------------------
+
+//Token validation contract
+
+public interface ITokenValidator
+{
+    Task<(bool IsValid, JwtSecurityToken JwtToken, string Error)> ValidateAsync(string token);
+}
+
+//------------------------------------------------------------
+
+//Token validation service flow
+
+//1. Read token
+//2. Check token format
+//3. Check expiry
+//4. (Future) call IdentityService to validate from DB
+
+//------------------------------------------------------------
+
+//Authentication Handler (core logic)
+
+//Flow
+
+Client Request
+    ->
+Gateway receives request
+    ->
+Check Authorization header
+    ->
+Extract Bearer token
+    ->
+Call TokenValidator
+    ->
+If invalid -> return 401
+    ->
+If valid -> extract claims
+    ->
+Create ClaimsIdentity
+    ->
+Attach to HttpContext.User
+    ->
+Return success
+
+//------------------------------------------------------------
+
+//Claims
+
+//Claims are taken from JWT token
+
+//Example
+
+sub -> UserId
+email -> Email
+role -> Role
+
+//Claims will be stored in
+
+HttpContext.User
+
+//------------------------------------------------------------
+
+//Authorization Policy
+
+//Used in YARP routes
+
+"AuthorizationPolicy": "ApiTokenPolicy"
+
+//Means:
+//Request must be authenticated before forwarding
+
+//------------------------------------------------------------
+
+//Register services in Program.cs
+
+builder.Services.AddSingleton<ITokenValidator, JwtTokenValidator>();
+
+builder.Services.AddAuthentication("ApiTokenScheme")
+    .AddScheme<AuthenticationSchemeOptions, ApiTokenHandler>(
+        "ApiTokenScheme", null);
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ApiTokenPolicy", policy =>
+        policy.RequireAuthenticatedUser());
+});
+
+//------------------------------------------------------------
+
+//Middleware order (very important)
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapReverseProxy();
+
+//------------------------------------------------------------
+
+//YARP concepts
+
+//Routes -> incoming request mapping
+//Clusters -> destination services
+
+//------------------------------------------------------------
+
+//YARP request flow
+
+Client
+    ->
+Gateway URL
+    ->
+Route match (based on path)
+    ->
+Authorization policy check
+    ->
+Authentication handler runs
+    ->
+Token validation
+    ->
+Claims creation
+    ->
+Cluster selected
+    ->
+Forward request to microservice
+    ->
+Response returned
+
+//------------------------------------------------------------
+
+//Public vs Secure routes
+
+//Public routes (no token required)
+//Example
+/api/identity/v1/auth/login
+
+//Secure routes (token required)
+//Example
+/api/client/v1/{everything}
+
+//------------------------------------------------------------
+
+//Transforms
+
+//Used to change request path
+
+//Example
+
+/api/client/v1/test
+    ->
+/client/v1/test
+
+//------------------------------------------------------------
+
+//Development vs Production config
+
+//Development
+appsettings.Development.json -> localhost services
+
+//Production
+appsettings.yarp.json -> Kubernetes services
+
+//------------------------------------------------------------
+
+//Full Gateway Flow
+
+Client
+  ->
+API Gateway
+  ->
+Authentication Handler
+  ->
+Token validation
+  ->
+Claims extraction
+  ->
+Authorization check
+  ->
+Route matching
+  ->
+Cluster selection
+  ->
+Forward to service
+  ->
+Response to client
+
+//------------------------------------------------------------
+
+//Future enhancements
+
+//1. IdentityService token validation (DB check)
+//2. Role based authorization
+//3. Redis caching
+//4. Logging
+//5. Rate limiting
+
+//------------------------------------------------------------
+
+//Debug claims
+
+return Ok(User.Claims);
+
+//------------------------------------------------------------
+
+//Key understanding
+
+//JWT -> contains claims
+//Gateway -> validates token
+//Gateway -> attaches claims
+//Service -> reads claims
+
+//------------------------------------------------------------
