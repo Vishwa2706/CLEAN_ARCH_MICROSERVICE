@@ -23,9 +23,16 @@ namespace Expense.Infrastructure.Service
             await _context.SaveChangesAsync();
         }
 
-        public async Task UpdateExpenseAsync(int id, ExpenseDto expense)
+        public async Task UpdateExpenseAsync(
+            int id,
+            ExpenseDto expense,
+            CancellationToken cancellationToken
+        )
         {
-            var existingExpense = await _context.Expenses.FindAsync(id);
+            var existingExpense = await _context.Expenses.FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken
+            );
 
             if (existingExpense == null)
                 throw new ArgumentException("Expense not found");
@@ -36,7 +43,7 @@ namespace Expense.Infrastructure.Service
             existingExpense.Date = expense.Date;
             existingExpense.Note = expense.Note;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task PatchExpenseAsync(int id, PatchExpenseRequest request)

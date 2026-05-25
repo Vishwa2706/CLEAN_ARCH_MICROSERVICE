@@ -612,3 +612,175 @@ return Ok(User.Claims);
 //Service -> reads claims
 
 //------------------------------------------------------------
+
+//CancellationToken
+
+//CancellationToken is used to stop/cancel an operation
+//when the request is no longer needed.
+
+//Why needed?
+
+//Sometimes:
+//1. User closes browser
+//2. Request timeout happens
+//3. Client disconnects
+//4. Long DB query still running
+
+//Without CancellationToken:
+//DB/API operation still continues
+//Server resources get wasted
+
+//With CancellationToken:
+//ASP.NET Core can stop operation gracefully
+
+//------------------------------------------------------------
+
+//Main Benefits
+
+//1. Prevents unnecessary work
+//2. Saves server resources
+//3. Improves scalability
+//4. Industry standard in async APIs
+//5. Useful for DB/API/file operations
+
+//------------------------------------------------------------
+
+//Request flow
+
+Client
+   ->
+Controller
+   ->
+Mediator
+   ->
+Handler
+   ->
+Service
+   ->
+EF Core / Database
+
+//CancellationToken flows through all layers
+
+//------------------------------------------------------------
+
+//ASP.NET Core automatically creates token using
+
+HttpContext.RequestAborted
+
+//If client disconnects,
+//token gets cancelled automatically
+
+//------------------------------------------------------------
+
+//Controller example
+
+[HttpGet]
+public async Task<IActionResult> GetAll(
+    CancellationToken cancellationToken
+)
+{
+    var result = await _mediator.Send(
+        new GetAllExpenseQuery(),
+        cancellationToken
+    );
+
+    return Ok(result);
+}
+
+//------------------------------------------------------------
+
+//Handler example
+
+public async Task<List<ExpenseDto>> Handle(
+    GetAllExpenseQuery request,
+    CancellationToken cancellationToken
+)
+{
+    return await _expenseService.GetAllExpensesAsync(
+        cancellationToken
+    );
+}
+
+//------------------------------------------------------------
+
+//Service example
+
+public async Task<List<ExpenseDto>> GetAllExpensesAsync(
+    CancellationToken cancellationToken
+)
+{
+    return await _context.Expenses
+        .AsNoTracking()
+        .ToListAsync(cancellationToken);
+}
+
+//------------------------------------------------------------
+
+//EF Core methods supporting CancellationToken
+
+ToListAsync(cancellationToken)
+
+FirstOrDefaultAsync(cancellationToken)
+
+AnyAsync(cancellationToken)
+
+SaveChangesAsync(cancellationToken)
+
+FindAsync([id], cancellationToken)
+
+//------------------------------------------------------------
+
+//Important understanding
+
+//CancellationToken does NOT make query faster directly
+
+//It improves:
+//1. Resource usage
+//2. Scalability
+//3. Thread utilization
+//4. Graceful cancellation
+
+//------------------------------------------------------------
+
+//Best practice
+
+//Pass token through all async layers
+
+Controller
+   ->
+Handler
+   ->
+Service
+   ->
+Repository
+   ->
+Database
+
+//------------------------------------------------------------
+
+//Always keep token as last parameter
+
+Task UpdateAsync(
+    int id,
+    ExpenseDto dto,
+    CancellationToken cancellationToken
+);
+
+//------------------------------------------------------------
+
+//Do NOT pass token inside command/query model constructor
+
+//Wrong
+
+new UpdateExpenseCommand(
+    id,
+    request,
+    cancellationToken
+)
+
+//Correct
+
+await _mediator.Send(
+    new UpdateExpenseCommand(id, request),
+    cancellationToken
+)

@@ -9,7 +9,7 @@ namespace Expense.Application.Contracts
 
         Task AddExpenseAsync(ExpenseDto expense);
 
-        Task UpdateExpenseAsync(int id, ExpenseDto expense);
+        Task UpdateExpenseAsync(int id, ExpenseDto expense, CancellationToken cancellationToken);
 
         Task PatchExpenseAsync(int id, PatchExpenseRequest request);
 

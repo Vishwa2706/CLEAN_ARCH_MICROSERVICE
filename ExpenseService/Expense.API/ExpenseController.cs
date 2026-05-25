@@ -143,10 +143,14 @@ public class ExpenseController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(
         [FromRoute] int id,
-        [FromBody] CreateExpenseRequest request
+        [FromBody] CreateExpenseRequest request,
+        CancellationToken cancellationToken
     )
     {
-        var updatedId = await _mediator.Send(new UpdateExpenseCommand(id, request));
+        var updatedId = await _mediator.Send(
+            new UpdateExpenseCommand(id, request),
+            cancellationToken
+        );
 
         return Ok(updatedId);
     }

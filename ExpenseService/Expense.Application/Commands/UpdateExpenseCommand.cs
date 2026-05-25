@@ -16,8 +16,7 @@ public class UpdateExpenseCommand : IRequest<int>
     }
 }
 
-public class UpdateExpenseCommandHandler
-    : IRequestHandler<UpdateExpenseCommand, int>
+public class UpdateExpenseCommandHandler : IRequestHandler<UpdateExpenseCommand, int>
 {
     private readonly IExpenseService _expenseService;
 
@@ -26,10 +25,7 @@ public class UpdateExpenseCommandHandler
         _expenseService = expenseService;
     }
 
-    public async Task<int> Handle(
-        UpdateExpenseCommand command,
-        CancellationToken cancellationToken
-    )
+    public async Task<int> Handle(UpdateExpenseCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
 
@@ -49,10 +45,10 @@ public class UpdateExpenseCommandHandler
             Category = request.Category,
             Amount = request.Amount,
             Date = request.Date ?? DateTime.UtcNow,
-            Note = request.Note
+            Note = request.Note,
         };
 
-        await _expenseService.UpdateExpenseAsync(command.Id, expense);
+        await _expenseService.UpdateExpenseAsync(command.Id, expense, cancellationToken);
 
         return command.Id;
     }
