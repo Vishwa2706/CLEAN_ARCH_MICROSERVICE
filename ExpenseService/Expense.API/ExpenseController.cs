@@ -10,6 +10,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Authorization.Attributes;
 using Shared.Authorization.Constants;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Expense.API.Controllers;
 
@@ -140,6 +141,23 @@ public class ExpenseController : ControllerBase
         return Ok(id);
     }
 
+    [SwaggerResponse(StatusCodes.Status200OK, "Expense updated successfully.", typeof(int))]
+    [SwaggerResponse(StatusCodes.Status400BadRequest, "Invalid expense data provided.")]
+    [SwaggerResponse(StatusCodes.Status401Unauthorized, "Unauthorized access.")]
+    [SwaggerResponse(
+        StatusCodes.Status403Forbidden,
+        "Forbidden. User does not have permission to update expenses."
+    )]
+    [SwaggerResponse(StatusCodes.Status404NotFound, "Expense not found.")]
+    [SwaggerResponse(StatusCodes.Status409Conflict, "Expense update conflict occurred.")]
+    [SwaggerResponse(
+        StatusCodes.Status422UnprocessableEntity,
+        "Validation failed for the expense request."
+    )]
+    [SwaggerResponse(
+        StatusCodes.Status500InternalServerError,
+        "An unexpected internal server error occurred."
+    )]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(
         [FromRoute] int id,
