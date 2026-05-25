@@ -784,3 +784,207 @@ await _mediator.Send(
     new UpdateExpenseCommand(id, request),
     cancellationToken
 )
+//------------------------------------------------------------
+
+//Parquet File Export
+
+Visual representation
+
+Parquet (column-based)
+Id       -> [1,2,3]
+
+Category -> [Food,Travel,Food]
+
+Amount   -> [500,800,200]
+
+//Parquet is a column-based binary file format
+//mainly used in analytics and big-data systems.
+
+//Unlike CSV:
+//CSV stores row by row
+
+//Example:
+//1,Food,500
+//2,Travel,700
+
+//Parquet stores column by column
+
+//Id -> 1,2
+//Category -> Food,Travel
+//Amount -> 500,700
+
+//Because of this:
+//1. Better compression
+//2. Faster analytical queries
+//3. Less storage usage
+//4. Schema support
+//5. Widely used in Spark/Hadoop/Data Lakes
+
+//------------------------------------------------------------
+
+//Install package
+
+//Infrastructure layer
+
+dotnet add package Parquet.Net
+
+//------------------------------------------------------------
+
+//Exporter contract
+
+public interface IExpenseExporter
+{
+byte[] Export(IEnumerable<ExpenseDto> expenses);
+
+```
+string ContentType { get; }
+
+string FileExtension { get; }
+```
+
+}
+
+//------------------------------------------------------------
+
+//Parquet exporter implementation
+
+using Expense.Application.Contracts;
+using Expense.Domain.Models;
+using Parquet.Serialization;
+
+namespace Expense.Infrastructure.Exporters
+{
+public class ParquetExpenseExporter : IExpenseExporter
+{
+public string ContentType => "application/vnd.apache.parquet";
+
+```
+    public string FileExtension => "parquet";
+
+    public byte[] Export(IEnumerable<ExpenseDto> expenses)
+    {
+        using var stream = new MemoryStream();
+
+        ParquetSerializer
+            .SerializeAsync(expenses, stream)
+            .GetAwaiter()
+            .GetResult();
+
+        return stream.ToArray();
+    }
+}
+```
+
+}
+
+//------------------------------------------------------------
+
+//Register exporter in Program.cs
+
+builder.Services.AddScoped<IExpenseExporter, CsvExpenseExporter>();
+
+builder.Services.AddScoped<IExpenseExporter, JsonExpenseExporter>();
+
+builder.Services.AddScoped<IExpenseExporter, ParquetExpenseExporter>();
+
+//------------------------------------------------------------
+
+//Factory Pattern usage
+
+//Factory dynamically creates correct exporter at runtime
+
+//Example
+
+var exporter = _expenseExporterFactory.Create(type);
+
+//Possible values:
+//csv
+//json
+//parquet
+
+//------------------------------------------------------------
+
+//Export API example
+
+[HttpGet("export/{type}")]
+public async Task<IActionResult> Export(string type)
+{
+var expenses = await _mediator.Send(new GetAllExpenseQuery());
+
+```
+var exporter = _expenseExporterFactory.Create(type);
+
+var fileBytes = exporter.Export(expenses);
+
+return File(
+    fileBytes,
+    exporter.ContentType,
+    $"expenses.{exporter.FileExtension}"
+);
+```
+
+}
+
+//------------------------------------------------------------
+
+//Returned files
+
+//GET /export/csv
+//returns expenses.csv
+
+//GET /export/json
+//returns expenses.json
+
+//GET /export/parquet
+//returns expenses.parquet
+
+//------------------------------------------------------------
+
+//File() method
+
+//File() returns downloadable binary/file response
+
+//Unlike:
+
+return Ok(data);
+
+//which returns JSON response
+
+//------------------------------------------------------------
+
+//Parquet advantages over CSV
+
+//CSV
+//1. Human readable
+//2. Simple
+//3. Larger file size
+//4. Slower for analytics
+
+//Parquet
+//1. Binary format
+//2. Smaller file size
+//3. Faster reads
+//4. Better compression
+//5. Better for big datasets
+
+//------------------------------------------------------------
+
+//Common usage areas
+
+//1. Data Lakes
+//2. ETL pipelines
+//3. Analytics systems
+//4. Machine Learning datasets
+//5. Spark/Hadoop processing
+
+//------------------------------------------------------------
+
+//Important understanding
+
+//Exporter converts data -> byte[]
+
+//CSV exporter -> text bytes
+//JSON exporter -> json bytes
+//Parquet exporter -> parquet binary bytes
+
+//ASP.NET Core File() method sends these bytes as downloadable file

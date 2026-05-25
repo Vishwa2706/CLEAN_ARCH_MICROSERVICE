@@ -31,6 +31,7 @@ builder.Services.AddScoped<DeleteExpenseCommand>();
 
 builder.Services.AddScoped<IExpenseExporter, CsvExpenseExporter>();
 builder.Services.AddScoped<IExpenseExporter, JsonExpenseExporter>();
+builder.Services.AddScoped<IExpenseExporter, ParquetExpenseExporter>();
 builder.Services.AddScoped<ExpenseExporterFactory>();
 
 builder.Services.AddScoped<MonthlyExpenseSummaryStrategy>();
