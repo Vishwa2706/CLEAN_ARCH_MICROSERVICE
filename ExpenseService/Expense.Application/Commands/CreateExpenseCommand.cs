@@ -1,5 +1,6 @@
 using Expense.Application.Contracts;
 using Expense.Domain.Models;
+using FluentValidation;
 using MediatR;
 using Shared.Exceptions;
 
@@ -15,9 +16,30 @@ public class CreateExpenseCommand : IRequest<int>
     }
 }
 
+//Validator
+
+public class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseCommand>
+{
+    public CreateExpenseCommandValidator()
+    {
+        RuleFor(x => x.Request.Category).NotEmpty().WithMessage("Category is required");
+
+        RuleFor(x => x.Request.Amount)
+            .GreaterThan(0)
+            .WithMessage("Amount must be greater than zero");
+
+        RuleFor(x => x.Request.UserId)
+            .GreaterThan(0)
+            .WithMessage("User id must be greater than zero");
+    }
+}
+
+//Handler
+
 public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand, int>
 {
     private readonly IExpenseService _expenseService;
+
     private readonly IUserServiceClient _userClient;
 
     public CreateExpenseCommandHandler(
@@ -33,31 +55,12 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
     {
         var request = command.Request;
 
-        if (string.IsNullOrWhiteSpace(request.Category))
-            throw new BadRequestException(
-                "Empty Category",
-                "Category is required",
-                "CATEGORY_INVALID"
-            );
-
-        if (request.Amount <= 0)
-            throw new BadRequestException(
-                "Invalid Amount",
-                "Amount must be greater than zero",
-                "INVALID_AMOUNT"
-            );
-
-        if (request.UserId <= 0)
-            throw new BadRequestException(
-                "Invalid User Id",
-                "User id must be greater than zero",
-                "INVALID_USER_ID"
-            );
-
         var user = await _userClient.GetUser(request.UserId);
 
         if (user == null)
+        {
             throw new BadRequestException("Invalid User", "User does not exist", "USER_NOT_FOUND");
+        }
 
         var expense = new ExpenseDto
         {

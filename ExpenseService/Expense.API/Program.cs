@@ -4,11 +4,13 @@ using Expense.Application.Contracts;
 using Expense.Application.Factories;
 using Expense.Application.Query;
 using Expense.Application.Strategies;
+using Expense.Application.Validator;
 using Expense.Infrastructure.Clients;
 using Expense.Infrastructure.Exporters;
 using Expense.Infrastructure.Persistence.Seed;
 using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Service;
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Authorization.Extensions;
@@ -59,6 +61,10 @@ builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(Assembly.Load("Expense.Application"));
 });
+
+builder.Services.AddValidatorsFromAssembly(Assembly.Load("Expense.Application"));
+
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
 var app = builder.Build();
 
