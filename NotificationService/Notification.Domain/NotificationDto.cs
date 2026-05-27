@@ -2,9 +2,9 @@ namespace Notification.Domain.Models;
 
 public class NotificationDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
 
-    public Guid UserId { get; set; }
+    public int UserId { get; set; }
 
     public string Title { get; set; } = default!;
 
