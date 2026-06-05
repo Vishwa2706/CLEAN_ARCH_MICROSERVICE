@@ -18,4 +18,14 @@ public class NotificationService : INotificationService
     {
         return await _context.Notification.AsNoTracking().ToListAsync(cancellationToken);
     }
+
+    public async Task CreateNotificationAsync(
+        NotificationDto notification,
+        CancellationToken cancellationToken
+    )
+    {
+        _context.Notification.Add(notification);
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

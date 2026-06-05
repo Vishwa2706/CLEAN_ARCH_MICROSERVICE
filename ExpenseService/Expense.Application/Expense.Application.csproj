@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Expense.Domain\Expense.Domain.csproj" />
     <ProjectReference Include="..\..\Shared.Exceptions\Shared.Exceptions.csproj" />
+    <ProjectReference Include="..\..\Shared.Common\Shared.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>

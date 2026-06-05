@@ -1322,3 +1322,515 @@ Handler
 Business logic only
 
 //------------------------------------------------------------
+
+//RabbitMQ Message Queue Implementation
+
+//------------------------------------------------------------
+
+//Why RabbitMQ?
+
+//Without RabbitMQ
+
+Expense Service
+    ->
+Notification Service API Call
+
+Problem:
+
+If Notification Service is down
+
+Expense Creation Fails
+
+Expense Service becomes tightly coupled
+to Notification Service
+
+//------------------------------------------------------------
+
+//With RabbitMQ
+
+Expense Service
+    ->
+RabbitMQ Queue
+    ->
+Notification Service
+
+Expense Service and Notification Service
+are completely independent
+
+//------------------------------------------------------------
+
+//Real World Example
+
+User creates expense
+
+Expense Service saves expense
+
+Expense Service publishes event
+
+ExpenseCreatedEvent
+
+RabbitMQ stores event
+
+Notification Service consumes event
+
+Notification record inserted
+
+//------------------------------------------------------------
+
+//Architecture
+
+Expense Service
+    |
+    | Publish
+    v
+RabbitMQ
+(expense-created)
+    |
+    | Consume
+    v
+Notification Service
+    |
+    v
+Notification Database
+
+//------------------------------------------------------------
+
+//Producer
+
+Expense Service
+
+//------------------------------------------------------------
+
+//Producer Responsibility
+
+Publish message into queue
+
+Producer does NOT know
+
+1. Who consumes
+2. When consumed
+3. How many consumers exist
+
+Producer only publishes
+
+//------------------------------------------------------------
+
+//Producer Runtime Flow
+
+HTTP Request
+
+POST /api/expenses
+
+    ->
+Controller
+
+    ->
+Mediator
+
+    ->
+CreateExpenseCommandHandler
+
+    ->
+ExpenseService
+
+    ->
+Database Save
+
+    ->
+RabbitMqPublisher
+
+    ->
+RabbitMQ Queue
+
+//------------------------------------------------------------
+
+//Published Event
+
+ExpenseCreatedEvent
+
+{
+    ExpenseId,
+    UserId,
+    Category,
+    Amount,
+    CreatedAt
+}
+
+//------------------------------------------------------------
+
+//Serialization
+
+RabbitMQ cannot store C# object
+
+Object
+
+    ->
+JSON
+
+    ->
+UTF8 Bytes
+
+    ->
+Queue
+
+//------------------------------------------------------------
+
+//Example
+
+ExpenseCreatedEvent
+
+    ->
+JsonSerializer.Serialize()
+
+    ->
+{
+   "ExpenseId":1,
+   "UserId":10,
+   "Amount":500
+}
+
+    ->
+UTF8 Bytes
+
+    ->
+RabbitMQ Queue
+
+//------------------------------------------------------------
+
+//Queue
+
+Queue Name
+
+expense-created
+
+//------------------------------------------------------------
+
+//Queue Purpose
+
+Stores messages until consumer processes them
+
+//------------------------------------------------------------
+
+//Queue Behaviour
+
+Producer publishes
+
+Message enters queue
+
+Consumer offline
+
+Message stays in queue
+
+Consumer starts later
+
+Message gets processed
+
+//------------------------------------------------------------
+
+//Consumer
+
+Notification Service
+
+//------------------------------------------------------------
+
+//Problem
+
+Notification Service has no HTTP request
+
+Who will continuously watch queue?
+
+Solution
+
+Hosted Service
+
+//------------------------------------------------------------
+
+//AddHostedService
+
+builder.Services.AddHostedService<
+    ExpenseCreatedConsumer>();
+
+//Registers background worker
+
+//------------------------------------------------------------
+
+//BackgroundService
+
+Microsoft base class for long-running tasks
+
+Examples
+
+1. RabbitMQ Consumer
+2. Email Worker
+3. Scheduled Jobs
+4. Cache Refresh Worker
+
+//------------------------------------------------------------
+
+//Application Startup Flow
+
+Notification API Starts
+
+    ->
+ASP.NET Core Startup
+
+    ->
+AddHostedService
+
+    ->
+Create ExpenseCreatedConsumer
+
+    ->
+ExecuteAsync()
+
+    ->
+RabbitMQ Connection
+
+    ->
+Start Listening
+
+//------------------------------------------------------------
+
+//ExecuteAsync Purpose
+
+Runs automatically
+when application starts
+
+Used for infinite listening
+
+//------------------------------------------------------------
+
+//Consumer Runtime Flow
+
+RabbitMQ Queue
+
+    ->
+Message Arrives
+
+    ->
+ReceivedAsync Event Fires
+
+    ->
+Read Bytes
+
+    ->
+Convert To JSON
+
+    ->
+Deserialize
+
+ExpenseCreatedEvent
+
+    ->
+NotificationService
+
+    ->
+Database Insert
+
+//------------------------------------------------------------
+
+//Deserialization Flow
+
+Queue Bytes
+
+    ->
+UTF8 String
+
+    ->
+JSON
+
+    ->
+ExpenseCreatedEvent
+
+//------------------------------------------------------------
+
+//Acknowledgement
+
+After successful processing
+
+BasicAckAsync()
+
+//Tells RabbitMQ
+
+Message processed successfully
+
+Remove message from queue
+
+//------------------------------------------------------------
+
+//Without Ack
+
+Message remains in queue
+
+Can be processed again
+
+//------------------------------------------------------------
+
+//Queue Counts
+
+Ready
+
+Messages waiting
+
+//------------------------------------------------------------
+
+//Unacked
+
+Consumer received
+
+But not acknowledged yet
+
+//------------------------------------------------------------
+
+//Example
+
+Ready = 5
+
+Consumer processes
+
+Ready = 0
+
+Unacked = 0
+
+//------------------------------------------------------------
+
+//IServiceScopeFactory
+
+Consumer is Hosted Service
+
+Hosted Service Lifetime
+
+Singleton
+
+//------------------------------------------------------------
+
+//Problem
+
+NotificationService
+
+Registered as Scoped
+
+Cannot inject Scoped
+inside Singleton
+
+//------------------------------------------------------------
+
+//Solution
+
+Create Scope
+
+using var scope =
+    _scopeFactory.CreateScope();
+
+var notificationService =
+    scope.ServiceProvider
+         .GetRequiredService<
+             INotificationService>();
+
+//Fresh Scoped Service Created
+
+//------------------------------------------------------------
+
+//Final End-To-End Flow
+
+User
+
+    ->
+POST /api/expenses
+
+    ->
+Expense Controller
+
+    ->
+Mediator
+
+    ->
+CreateExpenseCommandHandler
+
+    ->
+ExpenseService
+
+    ->
+PostgreSQL
+
+    ->
+RabbitMqPublisher
+
+    ->
+RabbitMQ Queue
+
+expense-created
+
+    ->
+ExpenseCreatedConsumer
+
+    ->
+Deserialize Event
+
+    ->
+NotificationService
+
+    ->
+Notification Table
+
+//------------------------------------------------------------
+
+//Benefits
+
+1. Loose Coupling
+
+2. Asynchronous Communication
+
+3. Better Scalability
+
+4. Retry Capability
+
+5. Fault Tolerance
+
+6. Independent Services
+
+7. Event Driven Architecture
+
+//------------------------------------------------------------
+
+//Important Understanding
+
+Controller
+
+Waits for HTTP Requests
+
+//------------------------------------------------------------
+
+//Hosted Service
+
+Waits for Background Events
+
+//------------------------------------------------------------
+
+//RabbitMQ Queue
+
+Temporary Message Storage
+
+//------------------------------------------------------------
+
+//Producer
+
+Publishes Messages
+
+//------------------------------------------------------------
+
+//Consumer
+
+Processes Messages
+
+//------------------------------------------------------------
+
+//Event
+
+Represents Something That Happened
+
+Example
+
+ExpenseCreatedEvent
+
+//------------------------------------------------------------

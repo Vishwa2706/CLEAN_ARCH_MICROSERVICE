@@ -7,6 +7,7 @@ using Expense.Application.Strategies;
 using Expense.Application.Validator;
 using Expense.Infrastructure.Clients;
 using Expense.Infrastructure.Exporters;
+using Expense.Infrastructure.Messaging;
 using Expense.Infrastructure.Persistence.Seed;
 using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Service;
@@ -38,6 +39,10 @@ builder.Services.AddScoped<ExpenseExporterFactory>();
 
 builder.Services.AddScoped<MonthlyExpenseSummaryStrategy>();
 builder.Services.AddScoped<CategoryExpenseSummaryStrategy>();
+
+builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection("RabbitMQ"));
+
+builder.Services.AddScoped<IMessagePublisher, RabbitMqPublisher>();
 
 builder.Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>
 {

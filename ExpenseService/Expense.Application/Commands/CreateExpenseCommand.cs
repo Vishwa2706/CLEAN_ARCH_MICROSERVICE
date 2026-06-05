@@ -2,6 +2,7 @@ using Expense.Application.Contracts;
 using Expense.Domain.Models;
 using FluentValidation;
 using MediatR;
+using Shared.Common.Events;
 using Shared.Exceptions;
 
 namespace Expense.Application.Commands;
@@ -42,13 +43,17 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
 
     private readonly IUserServiceClient _userClient;
 
+    private readonly IMessagePublisher _publisher;
+
     public CreateExpenseCommandHandler(
         IExpenseService expenseService,
-        IUserServiceClient userClient
+        IUserServiceClient userClient,
+        IMessagePublisher publisher
     )
     {
         _expenseService = expenseService;
         _userClient = userClient;
+        _publisher = publisher;
     }
 
     public async Task<int> Handle(CreateExpenseCommand command, CancellationToken cancellationToken)
@@ -72,6 +77,18 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
         };
 
         await _expenseService.AddExpenseAsync(expense);
+
+        await _publisher.PublishExpenseCreatedAsync(
+            new ExpenseCreatedEvent
+            {
+                ExpenseId = expense.Id,
+                UserId = expense.UserId ?? 1,
+                Category = expense.Category,
+                Amount = expense.Amount,
+                CreatedAt = DateTime.UtcNow,
+            },
+            cancellationToken
+        );
 
         return expense.Id;
     }

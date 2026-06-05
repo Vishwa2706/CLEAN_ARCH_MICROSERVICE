@@ -2,6 +2,7 @@ using System.Reflection;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Notification.Application.Contracts;
+using Notification.Infrastructure.Messaging;
 using Notification.Infrastructure.Services;
 using Notification.Infrastruture.Repository;
 
@@ -16,6 +17,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<NotificationRepository>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
+
+builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection("RabbitMQ"));
+builder.Services.AddHostedService<ExpenseCreatedConsumer>();
 
 // Register MediatR
 builder.Services.AddMediatR(cfg =>
