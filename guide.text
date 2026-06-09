@@ -1834,3 +1834,588 @@ Example
 ExpenseCreatedEvent
 
 //------------------------------------------------------------
+
+//Retry Mechanism
+
+Purpose
+
+Handle temporary failures
+
+Examples
+
+Database Down
+
+Network Issue
+
+API Timeout
+
+Temporary Service Failure
+
+//------------------------------------------------------------
+
+//Without Retry
+
+Message Received
+
+    ->
+
+Exception
+
+    ->
+
+Message Failed
+
+//------------------------------------------------------------
+
+//With Retry
+
+Message Received
+
+    ->
+
+Attempt 1
+
+    ->
+
+Failed
+
+    ->
+
+Wait
+
+    ->
+
+Attempt 2
+
+    ->
+
+Failed
+
+    ->
+
+Wait
+
+    ->
+
+Attempt 3
+
+    ->
+
+Success
+
+//------------------------------------------------------------
+
+//Current Implementation
+
+const int maxRetries = 3
+
+for loop
+
+Attempt Processing
+
+If Failed
+
+Retry Again
+
+//------------------------------------------------------------
+
+//Why Retry Exists
+
+Many failures are temporary
+
+Examples
+
+Database Restart
+
+Network Glitch
+
+Service Startup Delay
+
+//------------------------------------------------------------
+
+//Benefit
+
+Avoid losing messages
+because of temporary failures
+
+//------------------------------------------------------------
+
+//Dead Letter Queue (DLQ)
+
+DLQ is mainly a consumer-side failure handling mechanism. Messages are first produced to the normal queue. If the consumer cannot process them successfully after retries, 
+they are moved to a Dead Letter Queue for later investigation or reprocessing.
+
+//Purpose
+
+Store messages that
+could not be processed
+
+even after retries
+
+//------------------------------------------------------------
+
+//Problem
+
+Message Received
+
+    ->
+
+Retry 1 Failed
+
+    ->
+
+Retry 2 Failed
+
+    ->
+
+Retry 3 Failed
+
+//------------------------------------------------------------
+
+//Without DLQ
+
+Message Lost Forever
+
+//------------------------------------------------------------
+
+//With DLQ
+
+Message Received
+
+    ->
+
+Retry Failed
+
+    ->
+
+Move To DLQ
+
+expense-created-dlq
+
+//------------------------------------------------------------
+
+//What Is DLQ
+
+Normal RabbitMQ Queue
+
+Used only for failed messages
+
+//------------------------------------------------------------
+
+//Current DLQ
+
+expense-created-dlq
+
+//------------------------------------------------------------
+
+//Manual DLQ Flow
+
+Main Queue
+
+expense-created
+
+    ->
+
+Consumer
+
+    ->
+
+Failure After Retries
+
+    ->
+
+PublishToDlqAsync()
+
+    ->
+
+expense-created-dlq
+
+//------------------------------------------------------------
+
+//Why DLQ Is Useful
+
+Investigate Failures
+
+Recover Messages
+
+Replay Messages
+
+Avoid Data Loss
+
+//------------------------------------------------------------
+
+//ACK (Acknowledgement)
+
+//Purpose
+
+Tell RabbitMQ
+
+Message processed successfully
+
+//------------------------------------------------------------
+
+//Current Code
+
+await channel.BasicAckAsync(
+    eventArgs.DeliveryTag,
+    false,
+    stoppingToken
+);
+
+//------------------------------------------------------------
+
+//ACK Flow
+
+RabbitMQ
+
+    ->
+
+Deliver Message
+
+    ->
+
+Consumer Processes
+
+    ->
+
+BasicAckAsync()
+
+    ->
+
+RabbitMQ Removes Message
+
+//------------------------------------------------------------
+
+//Meaning
+
+I processed this message
+
+You can delete it
+
+//------------------------------------------------------------
+
+//Without ACK
+
+RabbitMQ assumes
+
+Message not processed
+
+//------------------------------------------------------------
+
+//Result
+
+Message may be delivered again
+
+//------------------------------------------------------------
+
+//At Least Once Delivery
+
+RabbitMQ guarantees
+
+Message delivered
+
+at least one time
+
+//------------------------------------------------------------
+
+//NACK (Negative Acknowledgement)
+
+//Purpose
+
+Tell RabbitMQ
+
+Message processing failed
+
+//------------------------------------------------------------
+
+//Example
+
+await channel.BasicNackAsync(
+    deliveryTag,
+    false,
+    true
+);
+
+//------------------------------------------------------------
+
+//Meaning
+
+Processing Failed
+
+Put Message Back Into Queue
+
+//------------------------------------------------------------
+
+//Requeue True
+
+BasicNackAsync(
+    deliveryTag,
+    false,
+    true
+)
+
+Result
+
+Message returns to queue
+
+//------------------------------------------------------------
+
+//Requeue False
+
+BasicNackAsync(
+    deliveryTag,
+    false,
+    false
+)
+
+Result
+
+Message discarded
+
+//------------------------------------------------------------
+
+//Current Project
+
+NACK not used
+
+//------------------------------------------------------------
+
+//Reason
+
+Manual DLQ Pattern
+
+//------------------------------------------------------------
+
+//Current Failure Flow
+
+Message Received
+
+    ->
+
+Retry 1
+
+    ->
+
+Retry 2
+
+    ->
+
+Retry 3
+
+    ->
+
+PublishToDlqAsync()
+
+    ->
+
+expense-created-dlq
+
+    ->
+
+BasicAckAsync()
+
+//------------------------------------------------------------
+
+//Why ACK After DLQ
+
+Message copied to DLQ
+
+Original message
+still exists in Main Queue
+
+Need ACK
+
+to remove original message
+
+//------------------------------------------------------------
+
+//Ready Count
+
+Messages waiting
+to be consumed
+
+//------------------------------------------------------------
+
+//Unacked Count
+
+Messages delivered
+
+but waiting for ACK
+
+//------------------------------------------------------------
+
+//Example
+
+Queue
+
+Ready = 1
+
+Unacked = 0
+
+//------------------------------------------------------------
+
+//Consumer Receives Message
+
+Ready = 0
+
+Unacked = 1
+
+//------------------------------------------------------------
+
+//Consumer Sends ACK
+
+Ready = 0
+
+Unacked = 0
+
+//------------------------------------------------------------
+
+//Consumer Crash Scenario
+
+RabbitMQ
+
+    ->
+
+Send Message
+
+    ->
+
+Consumer Processes
+
+    ->
+
+Application Crashes
+
+Before ACK
+
+//------------------------------------------------------------
+
+//Result
+
+RabbitMQ Never Received ACK
+
+//------------------------------------------------------------
+
+//RabbitMQ Action
+
+Redeliver Same Message
+
+//------------------------------------------------------------
+
+//Important Learning
+
+Retry
+
+Handles Temporary Failures
+
+//------------------------------------------------------------
+
+//DLQ
+
+Handles Permanent Failures
+
+//------------------------------------------------------------
+
+//ACK
+
+Success
+
+Remove Message
+
+//------------------------------------------------------------
+
+//NACK
+
+Failure
+
+Reject Message
+
+//------------------------------------------------------------
+
+//Production Flow
+
+Producer
+
+    ->
+
+Main Queue
+
+expense-created
+
+    ->
+
+Consumer
+
+    ->
+
+Success
+
+    ->
+
+ACK
+
+//------------------------------------------------------------
+
+//Failure Flow
+
+Producer
+
+    ->
+
+Main Queue
+
+expense-created
+
+    ->
+
+Consumer
+
+    ->
+
+Retry
+
+    ->
+
+Retry
+
+    ->
+
+Retry
+
+    ->
+
+DLQ
+
+expense-created-dlq
+
+    ->
+
+ACK Original Message
+
+//------------------------------------------------------------
+
+//Interview One-Liner
+
+Retry
+
+Temporary Failure Recovery
+
+//------------------------------------------------------------
+
+DLQ
+
+Parking Lot For Failed Messages
+
+//------------------------------------------------------------
+
+ACK
+
+Message Processed Successfully
+
+//------------------------------------------------------------
+
+NACK
+
+Message Processing Failed
+
+//------------------------------------------------------------

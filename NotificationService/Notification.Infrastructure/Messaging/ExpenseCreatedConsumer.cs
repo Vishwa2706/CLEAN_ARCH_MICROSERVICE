@@ -14,7 +14,6 @@ namespace Notification.Infrastructure.Messaging;
 public class ExpenseCreatedConsumer : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-
     private readonly RabbitMqSettings _settings;
 
     public ExpenseCreatedConsumer(
@@ -26,6 +25,20 @@ public class ExpenseCreatedConsumer : BackgroundService
         _settings = options.Value;
     }
 
+    private async Task PublishToDlqAsync(
+        IChannel channel,
+        byte[] body,
+        CancellationToken cancellationToken
+    )
+    {
+        await channel.BasicPublishAsync(
+            exchange: string.Empty,
+            routingKey: "expense-created-dlq",
+            body: body,
+            cancellationToken: cancellationToken
+        );
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var factory = new ConnectionFactory { Uri = new Uri(_settings.ConnectionString) };
@@ -34,6 +47,7 @@ public class ExpenseCreatedConsumer : BackgroundService
 
         var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
+        // Main Queue
         await channel.QueueDeclareAsync(
             queue: "expense-created",
             durable: true,
@@ -43,42 +57,81 @@ public class ExpenseCreatedConsumer : BackgroundService
             cancellationToken: stoppingToken
         );
 
+        // Dead Letter Queue
+        await channel.QueueDeclareAsync(
+            queue: "expense-created-dlq",
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: null,
+            cancellationToken: stoppingToken
+        );
+
         var consumer = new AsyncEventingBasicConsumer(channel);
 
-        consumer.ReceivedAsync += async (sender, eventArgs) =>
+        consumer.ReceivedAsync += async (_, eventArgs) =>
         {
-            var body = eventArgs.Body.ToArray();
+            const int maxRetries = 3;
 
-            var json = Encoding.UTF8.GetString(body);
-
-            var expenseEvent = JsonSerializer.Deserialize<ExpenseCreatedEvent>(json);
-
-            if (expenseEvent != null)
+            for (var attempt = 1; attempt <= maxRetries; attempt++)
             {
-                using var scope = _scopeFactory.CreateScope();
+                try
+                {
+                    var body = eventArgs.Body.ToArray();
 
-                var notificationService =
-                    scope.ServiceProvider.GetRequiredService<INotificationService>();
+                    var json = Encoding.UTF8.GetString(body);
 
-                await notificationService.CreateNotificationAsync(
-                    new NotificationDto
+                    var expenseEvent = JsonSerializer.Deserialize<ExpenseCreatedEvent>(json);
+
+                    if (expenseEvent == null)
                     {
-                        UserId = expenseEvent.UserId,
+                        throw new Exception("Failed to deserialize ExpenseCreatedEvent");
+                    }
 
-                        Title = "Expense Created",
+                    using var scope = _scopeFactory.CreateScope();
 
-                        Message =
-                            $"Expense ₹{expenseEvent.Amount} created in {expenseEvent.Category}",
+                    var notificationService =
+                        scope.ServiceProvider.GetRequiredService<INotificationService>();
 
-                        IsRead = false,
+                    await notificationService.CreateNotificationAsync(
+                        new NotificationDto
+                        {
+                            UserId = expenseEvent.UserId,
+                            Title = "Expense Created",
+                            Message =
+                                $"Expense ₹{expenseEvent.Amount} created in {expenseEvent.Category}",
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow,
+                        },
+                        stoppingToken
+                    );
 
-                        CreatedAt = DateTime.UtcNow,
-                    },
-                    stoppingToken
-                );
+                    Console.WriteLine($"Message processed successfully on attempt {attempt}");
+
+                    await channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Attempt {attempt} failed. Error: {ex.Message}");
+
+                    if (attempt == maxRetries)
+                    {
+                        Console.WriteLine("Maximum retries reached. Moving message to DLQ.");
+
+                        await PublishToDlqAsync(channel, eventArgs.Body.ToArray(), stoppingToken);
+
+                        Console.WriteLine("Message successfully moved to expense-created-dlq");
+
+                        await channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+
+                        return;
+                    }
+
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                }
             }
-
-            await channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
         };
 
         await channel.BasicConsumeAsync(
@@ -87,6 +140,8 @@ public class ExpenseCreatedConsumer : BackgroundService
             consumer: consumer,
             cancellationToken: stoppingToken
         );
+
+        Console.WriteLine("ExpenseCreatedConsumer started and listening on queue: expense-created");
 
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
