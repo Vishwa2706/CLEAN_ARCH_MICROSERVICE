@@ -2,6 +2,7 @@ using Expense.Application.Contracts;
 using Expense.Domain.Models;
 using FluentValidation;
 using MediatR;
+using Shared.Common.Contracts;
 using Shared.Common.Events;
 using Shared.Exceptions;
 
@@ -17,7 +18,7 @@ public class CreateExpenseCommand : IRequest<int>
     }
 }
 
-//Validator
+// Validator
 
 public class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseCommand>
 {
@@ -35,7 +36,7 @@ public class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseComm
     }
 }
 
-//Handler
+// Handler
 
 public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand, int>
 {
@@ -45,15 +46,19 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
 
     private readonly IMessagePublisher _publisher;
 
+    private readonly IUnitOfWork _unitOfWork;
+
     public CreateExpenseCommandHandler(
         IExpenseService expenseService,
         IUserServiceClient userClient,
-        IMessagePublisher publisher
+        IMessagePublisher publisher,
+        IUnitOfWork unitOfWork
     )
     {
         _expenseService = expenseService;
         _userClient = userClient;
         _publisher = publisher;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<int> Handle(CreateExpenseCommand command, CancellationToken cancellationToken)
@@ -67,29 +72,42 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
             throw new BadRequestException("Invalid User", "User does not exist", "USER_NOT_FOUND");
         }
 
-        var expense = new ExpenseDto
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
         {
-            UserId = request.UserId,
-            Category = request.Category,
-            Amount = request.Amount,
-            Date = request.Date ?? DateTime.UtcNow,
-            Note = request.Note,
-        };
-
-        await _expenseService.AddExpenseAsync(expense);
-
-        await _publisher.PublishExpenseCreatedAsync(
-            new ExpenseCreatedEvent
+            var expense = new ExpenseDto
             {
-                ExpenseId = expense.Id,
-                UserId = expense.UserId ?? 1,
-                Category = expense.Category,
-                Amount = expense.Amount,
-                CreatedAt = DateTime.UtcNow,
-            },
-            cancellationToken
-        );
+                UserId = request.UserId,
+                Category = request.Category,
+                Amount = request.Amount,
+                Date = request.Date ?? DateTime.UtcNow,
+                Note = request.Note,
+            };
 
-        return expense.Id;
+            await _expenseService.AddExpenseAsync(expense);
+
+            await _publisher.PublishExpenseCreatedAsync(
+                new ExpenseCreatedEvent
+                {
+                    ExpenseId = expense.Id,
+                    UserId = expense.UserId ?? 1,
+                    Category = expense.Category,
+                    Amount = expense.Amount,
+                    CreatedAt = DateTime.UtcNow,
+                },
+                cancellationToken
+            );
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+
+            return expense.Id;
+        }
+        catch (Exception)
+        {
+            await _unitOfWork.RollbackAsync(cancellationToken);
+
+            throw;
+        }
     }
 }

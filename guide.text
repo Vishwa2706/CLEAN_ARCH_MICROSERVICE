@@ -2419,3 +2419,958 @@ NACK
 Message Processing Failed
 
 //------------------------------------------------------------
+
+1.Why add BeginTransactionAsync to IExpenseService?
+To expose a PostgreSQL transaction so Save Expense and Publish RabbitMQ can be coordinated as one business operation.
+
+2.What happens in the success path?
+Begin transaction → save expense → publish RabbitMQ event → commit transaction.
+
+3.What happens if RabbitMQ publish throws an exception?
+The catch block rolls back the database transaction, so the expense is not persisted.
+
+4.Does this guarantee atomicity across DB and RabbitMQ?
+No. PostgreSQL and RabbitMQ are separate systems, so this reduces inconsistencies but does not fully eliminate distributed transaction edge cases.
+
+5.What are the main edge cases that still exist?
+Message published but producer never receives confirmation, and app crash after DB commit but before publish.
+
+6.Why is the Outbox Pattern preferred in production?
+Because it guarantees that if business data is committed, the corresponding event is also persisted and can be published later.
+
+//------------------------------------------------------------
+
+// Problem With Transaction + RabbitMQ
+
+Current Flow
+
+Begin Transaction
+
+    ->
+Save Expense
+
+    ->
+Publish RabbitMQ Message
+
+    ->
+Commit Transaction
+
+//------------------------------------------------------------
+
+// Looks Correct
+
+But There Is A Hidden Problem
+
+//------------------------------------------------------------
+
+// Scenario 1
+
+Save Expense
+
+    ->
+RabbitMQ Publish Success
+
+    ->
+Network Failure
+
+    ->
+Producer Never Receives Success Response
+
+//------------------------------------------------------------
+
+// Producer Thinks
+
+Message Publish Failed
+
+//------------------------------------------------------------
+
+// Reality
+
+Message Already Published
+
+//------------------------------------------------------------
+
+// Result
+
+Possible Duplicate Publish
+
+//------------------------------------------------------------
+
+// Scenario 2
+
+Save Expense
+
+    ->
+Commit Database
+
+    ->
+Application Crashes
+
+Before RabbitMQ Publish
+
+//------------------------------------------------------------
+
+// Result
+
+Expense Exists In Database
+
+But
+
+No Event Published
+
+//------------------------------------------------------------
+
+// Notification Service
+
+Never Receives Event
+
+//------------------------------------------------------------
+
+// Database And RabbitMQ
+
+Become Inconsistent
+
+//------------------------------------------------------------
+
+// Why Transaction Cannot Solve This
+
+PostgreSQL Transaction
+
+Controls Database Only
+
+//------------------------------------------------------------
+
+// RabbitMQ
+
+Separate System
+
+Separate Connection
+
+Separate Transaction Boundary
+
+//------------------------------------------------------------
+
+// Therefore
+
+Cannot Guarantee
+
+Database + RabbitMQ
+
+As One Atomic Transaction
+
+//------------------------------------------------------------
+
+// Solution
+
+Outbox Pattern
+
+//------------------------------------------------------------
+
+// What Is Outbox Pattern
+
+Store Event
+
+Inside Database
+
+Before Publishing
+
+//------------------------------------------------------------
+
+// New Flow
+
+Save Expense
+
+    ->
+Save Event To Outbox Table
+
+    ->
+Commit Transaction
+
+//------------------------------------------------------------
+
+// Important
+
+Both Records
+
+Saved In Same Database Transaction
+
+//------------------------------------------------------------
+
+// Example
+
+Expenses Table
+
+Id    Amount
+1     500
+
+//------------------------------------------------------------
+
+// Outbox Table
+
+Id    EventType             Status
+
+1     ExpenseCreatedEvent   Pending
+
+//------------------------------------------------------------
+
+// Transaction Commits
+
+//------------------------------------------------------------
+
+// Now
+
+Data Is Safe
+
+Even If Application Crashes
+
+//------------------------------------------------------------
+
+// Background Worker
+
+Polls Outbox Table
+
+//------------------------------------------------------------
+
+// Reads Pending Events
+
+    ->
+Publishes To RabbitMQ
+
+    ->
+Marks Event As Processed
+
+//------------------------------------------------------------
+
+// Final Flow
+
+API Request
+
+    ->
+Save Expense
+
+    ->
+Save Outbox Event
+
+    ->
+Commit
+
+    ->
+Background Service
+
+    ->
+RabbitMQ
+
+    ->
+Consumer
+
+//------------------------------------------------------------
+
+// Outbox Table Example
+
+Id
+
+EventType
+
+Payload
+
+CreatedAt
+
+ProcessedAt
+
+Status
+
+//------------------------------------------------------------
+
+// Payload Example
+
+{
+   "ExpenseId":1,
+   "UserId":10,
+   "Amount":500
+}
+
+------------------------------------------------------------
+
+// Benefits
+
+1. No Lost Messages
+
+2. No Missing Events
+
+3. Crash Safe
+
+4. Eventual Consistency
+
+5. Production Ready
+
+6. Widely Used In Microservices
+
+//------------------------------------------------------------
+
+// Trade Off
+
+Message Not Published Immediately
+
+//------------------------------------------------------------
+
+// Instead
+
+Save To Outbox
+
+    ->
+Background Worker Publishes Later
+
+//------------------------------------------------------------
+
+// Usually Delay
+
+Few Milliseconds
+
+To Few Seconds
+
+//------------------------------------------------------------
+
+// When To Use Simple Transaction
+
+Small Project
+
+Learning Project
+
+Internal Tools
+
+Low Traffic Applications
+
+//------------------------------------------------------------
+
+// When To Use Outbox Pattern
+
+Microservices
+
+Event Driven Systems
+
+Financial Systems
+
+Payment Systems
+
+Order Processing
+
+Inventory Systems
+
+Notification Systems
+
+Large Scale Production Applications
+
+//------------------------------------------------------------
+
+// Interview Answer
+
+Question:
+
+How Do You Handle
+
+Database Save Success
+
+But RabbitMQ Publish Failure ?
+
+------------------------------------------------------------
+
+// Junior Answer
+
+Use Database Transaction
+And Rollback
+
+//------------------------------------------------------------
+
+// Senior Answer
+
+Database Transaction Helps
+
+But Cannot Guarantee
+
+Consistency Across
+
+Database And RabbitMQ
+
+//------------------------------------------------------------
+
+// Better Solution
+
+Outbox Pattern
+
+Store Event In Database
+
+And Publish Later
+
+Using Background Worker
+
+//------------------------------------------------------------
+
+// One Line Definition
+
+Outbox Pattern
+
+Guarantees That
+
+If Business Data Is Saved
+
+The Event Is Also Saved
+
+And Will Eventually Be Published
+
+//------------------------------------------------------------
+
+//------------------------------------------------------------
+
+IDEMPOTENCY
+
+//------------------------------------------------------------
+
+//What is Idempotency?
+
+Processing the same message multiple times
+
+should produce
+
+the same result
+
+//------------------------------------------------------------
+
+//Why Do We Need It?
+
+RabbitMQ provides:
+
+At-Least-Once Delivery
+
+Meaning:
+
+RabbitMQ may deliver
+
+the same message
+
+more than once
+
+//------------------------------------------------------------
+
+//Example Problem
+
+RabbitMQ
+
+    ->
+Consumer
+
+    ->
+Notification Insert
+
+SUCCESS
+
+    ->
+Server Crash
+
+Before ACK
+
+//------------------------------------------------------------
+
+//RabbitMQ Thinking
+
+No ACK Received
+
+Message not processed
+
+//------------------------------------------------------------
+
+//RabbitMQ Action
+
+Sends same message again
+
+//------------------------------------------------------------
+
+//Result
+
+Notification Inserted Again
+
+Duplicate Notification Created
+
+//------------------------------------------------------------
+
+//Solution
+
+Every message gets
+
+a unique EventId
+
+//------------------------------------------------------------
+
+//Step 1
+
+Open
+
+Shared.Common
+    ->
+Events
+    ->
+ExpenseCreatedEvent.cs
+
+//------------------------------------------------------------
+
+//Current
+
+public class ExpenseCreatedEvent
+{
+    public int ExpenseId { get; set; }
+
+    public int UserId { get; set; }
+
+    ...
+}
+
+//------------------------------------------------------------
+
+//Change To
+
+public class ExpenseCreatedEvent
+{
+    public Guid EventId { get; set; }
+
+    public int ExpenseId { get; set; }
+
+    public int UserId { get; set; }
+
+    public string Category { get; set; }
+        = string.Empty;
+
+    public decimal Amount { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}
+
+//------------------------------------------------------------
+
+//Step 2
+
+Producer Generates EventId
+
+//------------------------------------------------------------
+
+//Open
+
+CreateExpenseCommandHandler
+
+//------------------------------------------------------------
+
+//Current
+
+new ExpenseCreatedEvent
+{
+    ExpenseId = expense.Id,
+}
+
+//------------------------------------------------------------
+
+//Change To
+
+new ExpenseCreatedEvent
+{
+    EventId = Guid.NewGuid(),
+
+    ExpenseId = expense.Id,
+
+    UserId = expense.UserId ?? 1,
+
+    Category = expense.Category,
+
+    Amount = expense.Amount,
+
+    CreatedAt = DateTime.UtcNow
+}
+
+//------------------------------------------------------------
+
+//Step 3
+
+Create New Entity
+
+//------------------------------------------------------------
+
+//Notification Service
+
+Create
+
+Domain
+    ->
+Models
+    ->
+ProcessedMessage.cs
+
+//------------------------------------------------------------
+
+namespace Notification.Domain.Models;
+
+public class ProcessedMessage
+{
+    public int Id { get; set; }
+
+    public Guid EventId { get; set; }
+
+    public DateTime ProcessedAt { get; set; }
+}
+
+//------------------------------------------------------------
+
+//Purpose
+
+Stores every message
+
+that was successfully processed
+
+//------------------------------------------------------------
+
+//Step 4
+
+Open
+
+NotificationRepository
+
+//------------------------------------------------------------
+
+//Add
+
+public DbSet<ProcessedMessage>
+    ProcessedMessages
+{
+    get;
+    set;
+}
+
+//------------------------------------------------------------
+
+//Step 5
+
+Migration
+
+//------------------------------------------------------------
+
+//Run
+
+dotnet ef migrations add AddProcessedMessages
+
+//------------------------------------------------------------
+
+//Then
+
+dotnet ef database update
+
+//------------------------------------------------------------
+
+//Table Created
+
+ProcessedMessages
+
+------------------------------------------------
+
+Id
+
+EventId
+
+ProcessedAt
+
+//------------------------------------------------------------
+
+//Step 6
+
+Consumer Duplicate Check
+
+//------------------------------------------------------------
+
+//Inside
+
+consumer.ReceivedAsync += ...
+
+//------------------------------------------------------------
+
+//After Deserialization
+
+var expenseEvent =
+    JsonSerializer.Deserialize<
+        ExpenseCreatedEvent>(json);
+
+//------------------------------------------------------------
+
+//Create Scope
+
+using var scope =
+    _scopeFactory.CreateScope();
+
+//------------------------------------------------------------
+
+//Get DbContext
+
+var db =
+    scope.ServiceProvider
+         .GetRequiredService<
+             NotificationRepository>();
+
+//------------------------------------------------------------
+
+//Check Duplicate
+
+var alreadyProcessed =
+    await db.ProcessedMessages
+        .AnyAsync(
+            x => x.EventId ==
+                 expenseEvent.EventId,
+            stoppingToken);
+
+//------------------------------------------------------------
+
+//If Duplicate
+
+if (alreadyProcessed)
+{
+    Console.WriteLine(
+        $"Duplicate Message Ignored: " +
+        expenseEvent.EventId);
+
+    await channel.BasicAckAsync(
+        eventArgs.DeliveryTag,
+        false,
+        stoppingToken);
+
+    return;
+}
+
+//------------------------------------------------------------
+
+//Why ACK Here?
+
+Message already processed
+
+No need to retry
+
+Remove from queue
+
+//------------------------------------------------------------
+
+//Step 7
+
+After Notification Insert
+
+//------------------------------------------------------------
+
+//Save EventId
+
+db.ProcessedMessages.Add(
+    new ProcessedMessage
+    {
+        EventId =
+            expenseEvent.EventId,
+
+        ProcessedAt =
+            DateTime.UtcNow
+    });
+
+await db.SaveChangesAsync(
+    stoppingToken);
+
+//------------------------------------------------------------
+
+//Now Event Stored
+
+ProcessedMessages
+
+------------------------------------------------
+
+ABC123
+
+XYZ456
+
+DEF789
+
+//------------------------------------------------------------
+
+//If RabbitMQ Sends Again
+
+EventId = ABC123
+
+//------------------------------------------------------------
+
+//Consumer Checks
+
+ProcessedMessages
+
+//------------------------------------------------------------
+
+//Found
+
+Already Processed
+
+//------------------------------------------------------------
+
+//Action
+
+ACK
+
+Ignore Message
+
+//------------------------------------------------------------
+
+//No Duplicate Notification
+
+//------------------------------------------------------------
+
+//Runtime Flow
+
+RabbitMQ
+
+    ->
+Receive Message
+
+    ->
+Deserialize
+
+ExpenseCreatedEvent
+
+    ->
+Read EventId
+
+    ->
+Check ProcessedMessages Table
+
+    ->
+Already Exists ?
+
+//------------------------------------------------------------
+
+//YES
+
+ACK
+
+    ->
+Ignore Message
+
+//------------------------------------------------------------
+
+//NO
+
+Create Notification
+
+    ->
+Save EventId
+
+    ->
+ACK
+
+//------------------------------------------------------------
+
+//Final End-To-End Flow
+
+Expense Created
+
+    ->
+Generate EventId
+
+    ->
+RabbitMQ
+
+    ->
+Consumer
+
+    ->
+Deserialize Event
+
+    ->
+Check EventId
+
+        ->
+Already Processed?
+
+            YES
+                ->
+ACK
+                ->
+Ignore
+
+            NO
+                ->
+Create Notification
+
+                ->
+Save EventId
+
+                ->
+ACK
+
+//------------------------------------------------------------
+
+//Benefits
+
+1. Prevents Duplicate Processing
+
+2. Handles RabbitMQ Redelivery
+
+3. Handles Consumer Crashes
+
+4. Safe Retry Support
+
+5. Production Ready Messaging
+
+6. Common Enterprise Pattern
+
+//------------------------------------------------------------
+
+//Important Understanding
+
+Business Id
+
+ExpenseId
+
+Represents Expense
+
+//------------------------------------------------------------
+
+//Message Id
+
+EventId
+
+Represents Message
+
+//------------------------------------------------------------
+
+//Never Use
+
+ExpenseId
+
+for Idempotency
+
+//------------------------------------------------------------
+
+//Always Use
+
+EventId
+
+because
+
+multiple messages can belong
+
+to the same Expense
+
+//------------------------------------------------------------
+
+//Interview Answer
+
+What is Idempotency?
+
+Idempotency ensures that processing
+the same message multiple times
+produces the same result.
+
+RabbitMQ provides At-Least-Once
+Delivery, so duplicate messages
+can occur.
+
+To prevent duplicate processing,
+we generate a unique EventId,
+store processed EventIds in a table,
+and ignore messages that have
+already been processed.
+
+//------------------------------------------------------------

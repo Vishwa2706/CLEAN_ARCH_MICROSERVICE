@@ -25,5 +25,6 @@
     <ProjectReference Include="..\Expense.Infrastructure\Expense.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared.Exceptions\Shared.Exceptions.csproj" />
     <ProjectReference Include="..\..\Shared.Authorization\Shared.Authorization.csproj" />
+    <ProjectReference Include="..\..\Shared.Common\Shared.Common.csproj" />
   </ItemGroup>
 </Project>

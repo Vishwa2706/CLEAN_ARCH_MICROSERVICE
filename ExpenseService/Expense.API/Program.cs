@@ -8,6 +8,7 @@ using Expense.Application.Validator;
 using Expense.Infrastructure.Clients;
 using Expense.Infrastructure.Exporters;
 using Expense.Infrastructure.Messaging;
+using Expense.Infrastructure.Persistence;
 using Expense.Infrastructure.Persistence.Seed;
 using Expense.Infrastructure.Repository;
 using Expense.Infrastructure.Service;
@@ -15,6 +16,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Authorization.Extensions;
+using Shared.Common.Contracts;
 using Shared.Exceptions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,6 +41,8 @@ builder.Services.AddScoped<ExpenseExporterFactory>();
 
 builder.Services.AddScoped<MonthlyExpenseSummaryStrategy>();
 builder.Services.AddScoped<CategoryExpenseSummaryStrategy>();
+
+builder.Services.AddScoped<IUnitOfWork, ExpenseUnitOfWork>();
 
 builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection("RabbitMQ"));
 
