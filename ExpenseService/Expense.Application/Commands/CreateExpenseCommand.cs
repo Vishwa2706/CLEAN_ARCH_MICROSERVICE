@@ -5,6 +5,7 @@ using MediatR;
 using Shared.Common.Contracts;
 using Shared.Common.Events;
 using Shared.Exceptions;
+using Shared.Logging.Contracts;
 
 namespace Expense.Application.Commands;
 
@@ -41,38 +42,52 @@ public class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseComm
 public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand, int>
 {
     private readonly IExpenseService _expenseService;
-
     private readonly IUserServiceClient _userClient;
-
     private readonly IMessagePublisher _publisher;
-
     private readonly IUnitOfWork _unitOfWork;
+    
+    private readonly ILoggerManager<CreateExpenseCommandHandler> _logger;
 
     public CreateExpenseCommandHandler(
         IExpenseService expenseService,
         IUserServiceClient userClient,
         IMessagePublisher publisher,
-        IUnitOfWork unitOfWork
+        IUnitOfWork unitOfWork,
+        ILoggerManager<CreateExpenseCommandHandler> logger
     )
     {
         _expenseService = expenseService;
         _userClient = userClient;
         _publisher = publisher;
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<int> Handle(CreateExpenseCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
 
+        _logger.LogInformation(
+            "Expense creation started. UserId={UserId}, Category={Category}, Amount={Amount}",
+            request.UserId,
+            request.Category,
+            request.Amount
+        );
+
         var user = await _userClient.GetUser(request.UserId);
 
         if (user == null)
         {
+            _logger.LogWarning("User validation failed. UserId={UserId}", request.UserId);
+
             throw new BadRequestException("Invalid User", "User does not exist", "USER_NOT_FOUND");
         }
 
+        _logger.LogDebug("User validation succeeded. UserId={UserId}", request.UserId);
+
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        _logger.LogDebug("Transaction started for UserId={UserId}", request.UserId);
 
         try
         {
@@ -87,6 +102,16 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
 
             await _expenseService.AddExpenseAsync(expense);
 
+            _logger.LogInformation(
+                "Expense persisted successfully. ExpenseId={ExpenseId}",
+                expense.Id
+            );
+
+            _logger.LogInformation(
+                "Publishing ExpenseCreated event. ExpenseId={ExpenseId}",
+                expense.Id
+            );
+
             await _publisher.PublishExpenseCreatedAsync(
                 new ExpenseCreatedEvent
                 {
@@ -99,13 +124,32 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
                 cancellationToken
             );
 
+            _logger.LogInformation(
+                "ExpenseCreated event published successfully. ExpenseId={ExpenseId}",
+                expense.Id
+            );
+
             await _unitOfWork.CommitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Transaction committed successfully. ExpenseId={ExpenseId}",
+                expense.Id
+            );
+
+            _logger.LogInformation(
+                "Expense creation completed successfully. ExpenseId={ExpenseId}",
+                expense.Id
+            );
 
             return expense.Id;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError("Expense creation failed for UserId={UserId}", ex, request.UserId);
+
             await _unitOfWork.RollbackAsync(cancellationToken);
+
+            _logger.LogWarning("Transaction rolled back for UserId={UserId}", request.UserId);
 
             throw;
         }

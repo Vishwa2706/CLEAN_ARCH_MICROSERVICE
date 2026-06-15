@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Authorization.Extensions;
 using Shared.Common.Contracts;
 using Shared.Exceptions;
+using Shared.Logging.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,8 @@ builder.Services.AddDbContext<ExpenseRepository>(options =>
 
 // Register LoggerService as singleton via interface
 builder.Services.AddSingleton<ILoggerService>(LoggerService.Instance);
+
+builder.Services.AddSharedLogging(builder.Configuration, "ExpenseService");
 
 // DI
 builder.Services.AddScoped<IExpenseService, ExpenseService>();

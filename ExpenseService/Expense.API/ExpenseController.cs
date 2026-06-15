@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using Expense.Application.Commands;
 using Expense.Application.Contracts;
 using Expense.Application.Factories;
@@ -10,6 +9,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Authorization.Attributes;
 using Shared.Authorization.Constants;
+using Shared.Logging.Contracts;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Expense.API.Controllers;
@@ -18,7 +18,7 @@ namespace Expense.API.Controllers;
 [Route("api/expenses")]
 public class ExpenseController : ControllerBase
 {
-    private readonly ILoggerService _logger;
+    private readonly ILoggerManager<ExpenseController> _logger;
 
     private readonly IMediator _mediator;
 
@@ -32,12 +32,12 @@ public class ExpenseController : ControllerBase
 
     public ExpenseController(
         IMediator mediator,
-        ILoggerService logger,
         ExpenseExporterFactory exporterFactory,
         MonthlyExpenseSummaryStrategy monthly,
         CategoryExpenseSummaryStrategy category,
         PatchExpenseCommand patchExpenseCommand,
-        DeleteExpenseCommand deleteExpenseCommand
+        DeleteExpenseCommand deleteExpenseCommand,
+        ILoggerManager<ExpenseController> logger
     )
     {
         _mediator = mediator;
@@ -56,6 +56,13 @@ public class ExpenseController : ControllerBase
         [FromQuery(Name = "page-size")] int pageSize = 10
     )
     {
+        _logger.LogInformation(
+            "Getting expenses. SearchTerm={SearchTerm}, StartIndex={StartIndex}, PageSize={PageSize}",
+            searchTerm,
+            startIndex,
+            pageSize
+        );
+
         var expenses = await _mediator.Send(
             new GetAllExpenseQuery
             {
@@ -66,7 +73,13 @@ public class ExpenseController : ControllerBase
         );
 
         if (!expenses.Any())
+        {
+            _logger.LogWarning("No expenses found for SearchTerm={SearchTerm}", searchTerm);
+
             return NoContent();
+        }
+
+        _logger.LogInformation("Retrieved {Count} expenses", expenses.Count());
 
         return Ok(expenses);
     }
@@ -76,7 +89,7 @@ public class ExpenseController : ControllerBase
     {
         try
         {
-            _logger.LogInfo($"Exporting expenses as {type}");
+            _logger.LogInformation($"Exporting expenses as {type}");
 
             var expenses = await _mediator.Send(
                 new GetAllExpenseQuery { StartIndex = 0, PageSize = 1000 }
