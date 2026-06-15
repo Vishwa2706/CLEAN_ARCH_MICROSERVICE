@@ -17,6 +17,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Authorization.Extensions;
 using Shared.Common.Contracts;
+using Shared.Common.Middleware;
 using Shared.Exceptions;
 using Shared.Logging.Infrastructure;
 
@@ -88,6 +89,7 @@ using (var scope = app.Services.CreateScope())
     await seeder.SeedAsync();
 }
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();

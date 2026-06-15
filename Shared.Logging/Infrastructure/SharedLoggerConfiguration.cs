@@ -14,7 +14,7 @@ public static class SharedLoggerConfiguration
             ?? "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
 
         return new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .ReadFrom.Configuration(configuration)
             .Enrich.FromLogContext()
             .Enrich.WithProperty("ServiceName", serviceName)
             .WriteTo.Console(outputTemplate: outputTemplate)
