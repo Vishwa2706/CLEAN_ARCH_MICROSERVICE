@@ -17,6 +17,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Authorization.Extensions;
 using Shared.Common.Contracts;
+using Shared.Common.Handlers;
 using Shared.Common.Middleware;
 using Shared.Exceptions;
 using Shared.Logging.Infrastructure;
@@ -52,10 +53,16 @@ builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection("R
 
 builder.Services.AddScoped<IMessagePublisher, RabbitMqPublisher>();
 
-builder.Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>
-{
-    client.BaseAddress = new Uri("http://localhost:5180");
-});
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddTransient<CorrelationIdHandler>();
+
+builder
+    .Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>
+    {
+        client.BaseAddress = new Uri("http://localhost:5180");
+    })
+    .AddHttpMessageHandler<CorrelationIdHandler>();
 
 //Seed Data
 builder.Services.AddScoped<DatabaseSeeder>();

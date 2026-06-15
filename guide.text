@@ -3374,3 +3374,81 @@ and ignore messages that have
 already been processed.
 
 //------------------------------------------------------------
+
+Notes
+Problem
+
+Initially, each microservice generated its own Correlation ID:
+
+Client
+   │
+   ▼
+Expense Service
+   └── CorrelationId = A123
+
+Expense Service → User Service
+
+User Service
+   └── CorrelationId = B456
+
+As a result:
+
+Logs from different services could not be linked together.
+End-to-end request tracing was difficult.
+Debugging distributed requests required manually correlating timestamps and events.
+Root Cause
+
+The Expense Service was making HTTP calls using HttpClient, but it was not forwarding the existing X-Correlation-Id header.
+
+Because the header was missing:
+
+if (string.IsNullOrWhiteSpace(correlationId))
+{
+    correlationId = Guid.NewGuid().ToString();
+}
+
+the User Service middleware generated a new Correlation ID.
+
+Solution
+
+Implemented a DelegatingHandler:
+
+CorrelationIdHandler : DelegatingHandler
+
+Responsibilities:
+
+Read the current Correlation ID from HttpContext.Items.
+Add it to outgoing HTTP requests.
+Forward the same X-Correlation-Id header to downstream services.
+
+Example:
+
+GET /api/users/5
+X-Correlation-Id: A123
+
+Now downstream services reuse the same ID instead of generating a new one.
+
+Result
+
+Before:
+
+Expense Service      [A123]
+User Service         [B456]
+Notification Service [C789]
+
+After:
+
+Expense Service      [A123]
+User Service         [A123]
+Notification Service [A123]
+
+A single request can now be traced across all services.
+
+Benefits
+End-to-end request tracing
+Easier debugging
+Faster root-cause analysis
+Consistent logging across microservices
+Better observability in distributed systems
+Simplifies troubleshooting in production
+

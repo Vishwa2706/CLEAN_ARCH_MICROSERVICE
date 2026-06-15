@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Shared.Common.Middleware;
+using Shared.Logging.Infrastructure;
 using Shared.Reddis.Contract;
 using Shared.Reddis.Service;
 using User.Application.Contracts;
@@ -15,6 +17,8 @@ builder.Services.AddDbContext<UserRepository>(options =>
 );
 
 //DI
+builder.Services.AddSharedLogging(builder.Configuration, "UserService");
+
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<GetAllUserQuery>();
 builder.Services.AddScoped<GetUserExpensesQuery>();
@@ -32,6 +36,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+app.UseMiddleware<CorrelationIdMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();
