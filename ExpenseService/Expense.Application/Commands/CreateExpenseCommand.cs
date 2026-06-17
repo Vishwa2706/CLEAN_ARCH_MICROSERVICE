@@ -5,6 +5,7 @@ using MediatR;
 using Shared.Common.Contracts;
 using Shared.Common.Events;
 using Shared.Exceptions;
+using Shared.InterHelperService.Contracts;
 using Shared.Logging.Contracts;
 
 namespace Expense.Application.Commands;
@@ -42,22 +43,22 @@ public class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseComm
 public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand, int>
 {
     private readonly IExpenseService _expenseService;
-    private readonly IUserServiceClient _userClient;
+    private readonly IUserHelperService _userHelperService;
     private readonly IMessagePublisher _publisher;
     private readonly IUnitOfWork _unitOfWork;
-    
+
     private readonly ILoggerManager<CreateExpenseCommandHandler> _logger;
 
     public CreateExpenseCommandHandler(
         IExpenseService expenseService,
-        IUserServiceClient userClient,
+        IUserHelperService userHelperService,
         IMessagePublisher publisher,
         IUnitOfWork unitOfWork,
         ILoggerManager<CreateExpenseCommandHandler> logger
     )
     {
         _expenseService = expenseService;
-        _userClient = userClient;
+        _userHelperService = userHelperService;
         _publisher = publisher;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -74,7 +75,7 @@ public class CreateExpenseCommandHandler : IRequestHandler<CreateExpenseCommand,
             request.Amount
         );
 
-        var user = await _userClient.GetUser(request.UserId);
+        var user = await _userHelperService.GetUserAsync(request.UserId, cancellationToken);
 
         if (user == null)
         {

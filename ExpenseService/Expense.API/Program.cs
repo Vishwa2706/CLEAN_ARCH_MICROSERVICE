@@ -18,8 +18,10 @@ using Microsoft.EntityFrameworkCore;
 using Shared.Authorization.Extensions;
 using Shared.Common.Contracts;
 using Shared.Common.Handlers;
+using Shared.Common.Interceptors;
 using Shared.Common.Middleware;
 using Shared.Exceptions;
+using Shared.InterHelperService.Extensions;
 using Shared.Logging.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -56,6 +58,10 @@ builder.Services.AddScoped<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddTransient<CorrelationIdHandler>();
+
+builder.Services.AddTransient<CorrelationIdGrpcInterceptor>();
+
+builder.Services.AddInterServiceHelper(builder.Configuration);
 
 builder
     .Services.AddHttpClient<IUserServiceClient, UserServiceClient>(client =>

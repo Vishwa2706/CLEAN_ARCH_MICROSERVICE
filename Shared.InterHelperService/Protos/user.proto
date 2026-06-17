@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option csharp_namespace = "Shared.InterHelperService.Protos";
+
+service UserGrpcService
+{
+    rpc GetUserById(GetUserRequest)
+        returns (GetUserResponse);
+}
+
+message GetUserRequest
+{
+    int32 userId = 1;
+}
+
+message GetUserResponse
+{
+    bool exists = 1;
+
+    int32 id = 2;
+
+    string name = 3;
+
+    int64 mobile = 4;
+
+    string role = 5;
+}

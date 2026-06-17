@@ -3452,3 +3452,429 @@ Consistent logging across microservices
 Better observability in distributed systems
 Simplifies troubleshooting in production
 
+gRPC Notes - My Implementation
+Why did I introduce gRPC?
+
+Before:
+
+Expense Service
+      |
+      | HTTP REST
+      v
+User Service
+
+Expense Service called:
+
+GET /api/users/{id}
+
+using HttpClient.
+
+Problems:
+
+JSON serialization/deserialization overhead
+More network payload
+Manual URL management
+Internal service communication not optimized
+
+Solution:
+
+Expense Service
+      |
+      | gRPC
+      v
+User Service
+
+Uses:
+
+HTTP/2
+Protocol Buffers
+Binary serialization
+Faster internal communication
+Architecture
+Expense Service
+     |
+     |
+     v
+IUserHelperService
+     |
+     |
+     v
+UserGrpcServiceClient
+     |
+     |
+     v
+HTTP/2
+     |
+     |
+     v
+UserGrpcServiceImpl
+     |
+     |
+     v
+GetUserByUserId
+     |
+     |
+     v
+Database
+Step 1 - Create Shared Library
+
+Created:
+
+Shared.InterHelperService
+
+Purpose:
+
+Shared Contracts
+Shared Proto Files
+Shared gRPC Client Logic
+
+Used by:
+
+Expense Service
+User Service
+Step 2 - Create Proto Contract
+
+Created:
+
+user.proto
+
+Example:
+
+syntax = "proto3";
+
+service UserGrpcService {
+  rpc GetUserById(GetUserRequest)
+      returns (GetUserResponse);
+}
+
+Purpose:
+
+Contract between services
+
+Think:
+
+Interface for microservices
+
+Both services agree on:
+
+Request Structure
+Response Structure
+Available Methods
+Step 3 - Define Messages
+
+Request:
+
+message GetUserRequest {
+  int32 userId = 1;
+}
+
+Response:
+
+message GetUserResponse {
+  bool exists = 1;
+  int32 id = 2;
+  string name = 3;
+  int64 mobile = 4;
+  string role = 5;
+}
+
+Purpose:
+
+Data exchanged between services
+Step 4 - Generate Classes
+
+Added:
+
+<Protobuf Include="Protos\user.proto" />
+
+Build process generates:
+
+GetUserRequest
+GetUserResponse
+UserGrpcServiceClient
+UserGrpcServiceBase
+
+Automatically.
+
+No manual coding.
+
+Step 5 - User Service (Server)
+
+Added:
+
+builder.Services.AddGrpc();
+
+Purpose:
+
+Enable gRPC infrastructure
+
+Created:
+
+UserGrpcServiceImpl
+
+Example:
+
+public class UserGrpcServiceImpl
+    : UserGrpcService.UserGrpcServiceBase
+
+Purpose:
+
+gRPC Controller
+
+Equivalent REST:
+
+UserController
+
+Implemented:
+
+GetUserById()
+
+Purpose:
+
+Handle incoming gRPC request
+
+Flow:
+
+Expense Service
+      |
+      v
+GetUserById()
+      |
+      v
+Query
+      |
+      v
+Database
+
+Registered:
+
+app.MapGrpcService<UserGrpcServiceImpl>();
+
+Purpose:
+
+Expose gRPC endpoint
+
+Equivalent:
+
+app.MapControllers();
+Step 6 - Configure HTTP/2
+
+gRPC requires:
+
+HTTP/2
+
+Configured:
+
+builder.WebHost.ConfigureKestrel(...)
+
+Example:
+
+options.ListenLocalhost(5181, listenOptions =>
+{
+    listenOptions.Protocols =
+        HttpProtocols.Http2;
+});
+
+Purpose:
+
+Dedicated gRPC Port
+
+My Setup:
+
+5180 -> REST
+5181 -> gRPC
+Step 7 - Expense Service (Client)
+
+Configured:
+
+{
+  "GrpcSettings": {
+    "UserServiceUrl": "http://localhost:5181"
+  }
+}
+
+Purpose:
+
+Location of User Service gRPC endpoint
+
+Registered:
+
+services.AddGrpcClient<
+    UserGrpcService.UserGrpcServiceClient>(
+    options =>
+{
+    options.Address =
+        new Uri(userServiceUrl);
+});
+
+Purpose:
+
+Create gRPC client
+
+Equivalent:
+
+HttpClient
+
+for REST.
+
+Step 8 - Create Helper Layer
+
+Created:
+
+IUserHelperService
+
+and
+
+UserHelperService
+
+Purpose:
+
+Hide gRPC implementation
+
+Handler only knows:
+
+await _userHelperService.GetUserAsync(...)
+
+Handler does NOT know:
+
+gRPC
+HTTP
+GraphQL
+
+Good abstraction.
+
+Step 9 - Use in Command Handler
+
+Before:
+
+_userClient.GetUser()
+
+After:
+
+_userHelperService.GetUserAsync()
+
+Flow:
+
+CreateExpenseCommand
+        |
+        v
+UserHelperService
+        |
+        v
+gRPC Client
+        |
+        v
+User Service
+Correlation ID Support
+
+HTTP Version:
+
+Middleware
+     |
+DelegatingHandler
+
+gRPC Version:
+
+Middleware
+     |
+Interceptor
+
+Client Side:
+
+CorrelationIdGrpcInterceptor
+
+Purpose:
+
+Attach CorrelationId
+to gRPC Metadata
+
+Server Side:
+
+CorrelationIdServerInterceptor
+
+Purpose:
+
+Read CorrelationId
+from Metadata
+
+Flow:
+
+Frontend
+    |
+Expense Service
+    |
+CorrelationId = abc123
+    |
+gRPC Metadata
+    |
+User Service
+    |
+Logs
+
+Same correlation id across services.
+
+Difference Between REST and gRPC
+REST	gRPC
+HTTP/1.1	HTTP/2
+JSON	Binary
+Controller	GrpcService
+HttpClient	GrpcClient
+URL Based	Contract Based
+Larger Payload	Smaller Payload
+Public APIs	Internal Communication
+Real World Usage
+
+Typical MNC Setup:
+
+Frontend
+    |
+API Gateway
+    |
+    +---- User Service
+    |
+    +---- Expense Service
+    |
+    +---- Notification Service
+
+External:
+
+REST
+
+Internal:
+
+gRPC
+
+because:
+
+Fast
+Typed
+Contract First
+Low Payload
+HTTP/2
+Interview Summary
+
+If someone asks:
+
+Why gRPC?
+
+Answer:
+
+gRPC uses Protocol Buffers and HTTP/2 for efficient service-to-service communication. It provides strongly typed contracts, smaller payloads, faster serialization, and better performance than REST for internal microservice communication.
+
+If someone asks:
+
+Why proto?
+
+Answer:
+
+Proto acts as the contract between services. It defines requests, responses, and available RPC methods. From the proto file, client and server classes are generated automatically.
+
+If someone asks:
+
+Why Helper Service?
+
+Answer:
+
+To isolate gRPC implementation details from business logic. Handlers depend on abstractions rather than communication technology.
+
+These notes cover the complete implementation you just built end-to-end.
