@@ -3878,3 +3878,248 @@ Answer:
 To isolate gRPC implementation details from business logic. Handlers depend on abstractions rather than communication technology.
 
 These notes cover the complete implementation you just built end-to-end.
+
+//Optimistic Locking (Optimistic Concurrency)
+What is it?
+
+Optimistic Locking is a concurrency control mechanism that prevents multiple users from accidentally overwriting each other's changes while updating the same record.
+
+Instead of locking the row, it checks whether the record has changed before saving.
+
+Why do we need it?
+
+Example:
+
+Expense
+
+Amount = 1000
+User A                User B
+   |                     |
+ GET                  GET
+Version = V1       Version = V1
+   |                     |
+Update Amount       Update Amount
+1500                1200
+
+Without Optimistic Locking:
+
+Final Amount = 1200 ❌
+
+(User A's changes are lost)
+
+With Optimistic Locking:
+
+User A -> Success ✅
+
+User B -> 409 Conflict ❌
+
+(User B must refresh and try again)
+How it works
+
+Every record contains a Version (Concurrency Token).
+
+Id   Amount   Version
+1    1000     A1B2C3
+GET API
+
+Returns
+
+{
+    "id":1,
+    "amount":1000,
+    "version":"A1B2C3"
+}
+
+Client stores the Version.
+
+PATCH / PUT API
+
+Client sends
+
+{
+    "amount":1500,
+    "version":"A1B2C3"
+}
+
+EF Core checks:
+
+Request Version
+
+==
+
+Database Version ?
+
+If Yes
+
+Update Success
+
+Generate new Version
+
+Version
+
+A1B2C3
+
+↓
+
+X9Y8Z7
+
+If No
+
+DbUpdateConcurrencyException
+
+↓
+
+409 Conflict
+Implementation Steps
+1. Add Version property
+public Guid Version { get; set; } = Guid.NewGuid();
+2. Configure Concurrency Token
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    modelBuilder.Entity<ExpenseDto>()
+        .Property(e => e.Version)
+        .IsConcurrencyToken();
+}
+
+Purpose
+
+Tells EF Core that Version should be used for concurrency checking.
+
+Without this, Version behaves like a normal column.
+
+3. Return Version in GET API
+{
+    "id":1,
+    "amount":500,
+    "version":"xxxx-xxxx-xxxx"
+}
+4. Accept Version in Update Request
+public Guid Version { get; set; }
+5. Set OriginalValue
+_context.Entry(existingExpense)
+    .Property(x => x.Version)
+    .OriginalValue = request.Version;
+
+Purpose
+
+Tells EF Core:
+
+"Compare the Version that the client originally read, not the Version currently loaded from the database."
+
+Without this line, EF won't detect conflicts correctly.
+
+6. Generate New Version
+existingExpense.Version = Guid.NewGuid();
+
+A new Version is generated after every successful update.
+
+7. Handle Concurrency Exception
+try
+{
+    await _context.SaveChangesAsync();
+}
+catch (DbUpdateConcurrencyException)
+{
+    throw new InvalidOperationException(
+        "Expense has already been modified by another user."
+    );
+}
+
+Controller
+
+catch (InvalidOperationException ex)
+{
+    return Conflict(ex.Message);
+}
+
+Returns
+
+409 Conflict
+What does IsConcurrencyToken() do?
+modelBuilder.Entity<ExpenseDto>()
+    .Property(e => e.Version)
+    .IsConcurrencyToken();
+
+It tells EF Core:
+
+Include the Version column in the WHERE clause during UPDATE and DELETE operations.
+
+Generated SQL:
+
+UPDATE Expenses
+SET Amount = 1500,
+    Version = 'NEW_GUID'
+WHERE Id = 1
+AND Version = 'OLD_GUID';
+
+If the Version doesn't match, 0 rows are updated, and EF Core throws a DbUpdateConcurrencyException.
+
+What does OriginalValue do?
+_context.Entry(existingExpense)
+    .Property(x => x.Version)
+    .OriginalValue = request.Version;
+
+Purpose
+
+Replaces EF Core's tracked original value with the Version sent by the client.
+
+Without it:
+
+EF compares
+
+Database Version
+
+vs
+
+Database Version
+
+Conflict is never detected.
+
+With it:
+
+EF compares
+
+Client Version
+
+vs
+
+Database Version
+
+Conflict is detected correctly.
+
+Flow
+GET Expense
+      │
+      ▼
+Client receives Version
+      │
+      ▼
+User edits Expense
+      │
+      ▼
+PATCH/PUT sends Version
+      │
+      ▼
+EF Core compares Version
+      │
+      ├── Match
+      │      │
+      │      ▼
+      │  Save Changes
+      │  Generate New Version
+      │
+      └── Mismatch
+             │
+             ▼
+ DbUpdateConcurrencyException
+             │
+             ▼
+      409 Conflict
+Advantages
+Prevents Lost Updates
+No Database Locking
+Better Performance than Pessimistic Locking
+Ideal for Web Applications and REST APIs
+Supported natively by EF Core

@@ -9,4 +9,11 @@ public class ExpenseRepository : DbContext
         : base(options) { }
 
     public DbSet<ExpenseDto> Expenses => Set<ExpenseDto>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<ExpenseDto>().Property(e => e.Version).IsConcurrencyToken();
+    }
 }

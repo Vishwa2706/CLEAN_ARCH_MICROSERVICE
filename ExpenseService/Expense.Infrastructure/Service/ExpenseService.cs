@@ -53,10 +53,13 @@ namespace Expense.Infrastructure.Service
             if (existingExpense == null)
                 throw new ArgumentException("Expense not found");
 
-            if (request.UserId != null)
+            _context.Entry(existingExpense).Property(x => x.Version).OriginalValue =
+                request.Version;
+
+            if (request.UserId.HasValue)
                 existingExpense.UserId = request.UserId;
 
-            if (request.Category != null)
+            if (!string.IsNullOrWhiteSpace(request.Category))
                 existingExpense.Category = request.Category;
 
             if (request.Amount.HasValue)
@@ -68,7 +71,19 @@ namespace Expense.Infrastructure.Service
             if (request.Note != null)
                 existingExpense.Note = request.Note;
 
-            await _context.SaveChangesAsync();
+            // Generate a new Version for the updated record
+            existingExpense.Version = Guid.NewGuid();
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new InvalidOperationException(
+                    "This expense has already been modified by another user."
+                );
+            }
         }
 
         public async Task DeleteExpenseAsync(int id)

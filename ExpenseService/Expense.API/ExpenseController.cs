@@ -195,7 +195,12 @@ public class ExpenseController : ControllerBase
         try
         {
             var updatedId = await _patchExpenseCommand.Execute(id, request);
+
             return Ok(updatedId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
         }
         catch (ArgumentException ex)
         {

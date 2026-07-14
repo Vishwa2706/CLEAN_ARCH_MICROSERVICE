@@ -5,8 +5,8 @@ namespace Expense.Domain.Models
         public int UserId { get; set; }
         public string Category { get; set; } = string.Empty;
         public decimal Amount { get; set; }
-
         public DateTime? Date { get; set; }
         public string? Note { get; set; }
+        public Guid Version { get; set; }
     }
 }

@@ -18,6 +18,9 @@ namespace Expense.Application.Commands
             if (id <= 0)
                 throw new ArgumentException("Invalid expense id");
 
+            if (request.Version == Guid.Empty)
+                throw new ArgumentException("Version is required.");
+
             if (string.IsNullOrWhiteSpace(request.Category))
                 throw new ArgumentException("Category is required");
 
